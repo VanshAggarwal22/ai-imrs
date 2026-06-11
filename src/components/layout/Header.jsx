@@ -3,12 +3,16 @@ import { Search, Bell, Sun } from 'lucide-react';
 
 const pageTitles = {
     '/': 'Executive Dashboard',
+    '/ai-sales': 'AI Lead Automation',
     '/sales': 'Sales Pipeline',
     '/quoting': 'Quoting Engine',
     '/marketing': 'Marketing ROI',
     '/inventory': 'Inventory & MRP',
+    '/purchase-orders': 'Purchase Orders',
+    '/orders': 'Orders Management',
     '/quality': 'Quality Control',
     '/portal': 'Customer Portal',
+    '/settings': 'Settings',
 };
 
 export default function Header() {

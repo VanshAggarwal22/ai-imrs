@@ -7,19 +7,22 @@ import {
     orders as initialOrders
 } from '../data/mockData';
 import { SupabaseService, supabase } from '../services/SupabaseService';
+import { useToast } from './ToastContext';
 
 const DataContext = createContext(null);
 
 export { DataContext };
 
 export const DataProvider = ({ children }) => {
+    const { showToast } = useToast();
+    
     // Helper to init state from localStorage or fallback to mockData
     const initData = (key, initialData) => {
         try {
             const saved = localStorage.getItem(key);
             if (saved) return JSON.parse(saved);
         } catch (e) {
-            console.error('Failed to load local storage data', e);
+            console.error('Failed to parse local storage data', e);
         }
         return initialData;
     };
@@ -34,26 +37,10 @@ export const DataProvider = ({ children }) => {
     const [pendingPO, setPendingPO] = useState(null); // For pre-filling PO form from MRP alerts
     const [isSupabaseConnected, setIsSupabaseConnected] = useState(!!supabase);
 
-    // Initial load from SQLite and Supabase
+    // Initial load from Supabase
     useEffect(() => {
         const loadInitialData = async () => {
-            // 1. Try fetching from Local SQLite (if local)
-            try {
-                const res = await fetch('/api/data/app_state');
-                const remoteData = await res.json();
-                if (remoteData) {
-                    if (remoteData.inventoryItems?.length) setInventoryItems(remoteData.inventoryItems);
-                    if (remoteData.suppliersList?.length) setSuppliersList(remoteData.suppliersList);
-                    if (remoteData.vendors?.length) setVendors(remoteData.vendors);
-                    if (remoteData.allLeads?.length) setAllLeads(remoteData.allLeads);
-                    if (remoteData.orders?.length) setOrders(remoteData.orders);
-                    if (remoteData.purchaseOrders?.length) setPurchaseOrders(remoteData.purchaseOrders);
-                }
-            } catch (e) {
-                console.warn('SQLite backend not reachable, using localStorage/mockData');
-            }
-
-            // 2. Try fetching from Supabase if connected
+            // Try fetching from Supabase if connected
             if (isSupabaseConnected) {
                 const cloudData = await SupabaseService.fetchAllData();
                 if (cloudData) {
@@ -168,16 +155,14 @@ export const DataProvider = ({ children }) => {
         loadInitialData();
     }, [isSupabaseConnected]);
 
-    // Keep LocalStorage in sync (cache layer)
-    useEffect(() => {
-        localStorage.setItem('imrs_inventory', JSON.stringify(inventoryItems));
-        localStorage.setItem('imrs_suppliers', JSON.stringify(suppliersList));
-        localStorage.setItem('imrs_vendors', JSON.stringify(vendors));
-        localStorage.setItem('imrs_leads', JSON.stringify(allLeads));
-        localStorage.setItem('imrs_products', JSON.stringify(products));
-        localStorage.setItem('imrs_orders', JSON.stringify(orders));
-        localStorage.setItem('imrs_pos', JSON.stringify(purchaseOrders));
-    }, [inventoryItems, suppliersList, vendors, allLeads, products, orders, purchaseOrders]);
+    // Keep LocalStorage in sync (cache layer) - separate effects for efficiency
+    useEffect(() => { localStorage.setItem('imrs_inventory', JSON.stringify(inventoryItems)); }, [inventoryItems]);
+    useEffect(() => { localStorage.setItem('imrs_suppliers', JSON.stringify(suppliersList)); }, [suppliersList]);
+    useEffect(() => { localStorage.setItem('imrs_vendors', JSON.stringify(vendors)); }, [vendors]);
+    useEffect(() => { localStorage.setItem('imrs_leads', JSON.stringify(allLeads)); }, [allLeads]);
+    useEffect(() => { localStorage.setItem('imrs_products', JSON.stringify(products)); }, [products]);
+    useEffect(() => { localStorage.setItem('imrs_orders', JSON.stringify(orders)); }, [orders]);
+    useEffect(() => { localStorage.setItem('imrs_pos', JSON.stringify(purchaseOrders)); }, [purchaseOrders]);
 
     // ---- GRANULAR CRUD OPERATIONS (Direct Local + Async Supabase) ----
 
@@ -185,19 +170,34 @@ export const DataProvider = ({ children }) => {
     const addLead = async (lead) => {
         setAllLeads(prev => [...prev, lead]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertLead(lead);
+            try {
+                await SupabaseService.insertLead(lead);
+            } catch (e) {
+                console.error('Failed to add lead to Supabase:', e);
+                showToast('Failed to save lead to cloud', 'error');
+            }
         }
     };
     const updateLead = async (lead) => {
         setAllLeads(prev => prev.map(l => l.id === lead.id ? lead : l));
         if (isSupabaseConnected) {
-            await SupabaseService.updateLead(lead);
+            try {
+                await SupabaseService.updateLead(lead);
+            } catch (e) {
+                console.error('Failed to update lead in Supabase:', e);
+                showToast('Failed to update lead in cloud', 'error');
+            }
         }
     };
     const deleteLead = async (id) => {
         setAllLeads(prev => prev.filter(l => l.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deleteLead(id);
+            try {
+                await SupabaseService.deleteLead(id);
+            } catch (e) {
+                console.error('Failed to delete lead from Supabase:', e);
+                showToast('Failed to delete lead from cloud', 'error');
+            }
         }
     };
 
@@ -205,19 +205,34 @@ export const DataProvider = ({ children }) => {
     const addInventoryItem = async (item) => {
         setInventoryItems(prev => [...prev, item]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertInventory(item);
+            try {
+                await SupabaseService.insertInventory(item);
+            } catch (e) {
+                console.error('Failed to add inventory item to Supabase:', e);
+                showToast('Failed to save inventory item to cloud', 'error');
+            }
         }
     };
     const updateInventoryItem = async (item) => {
         setInventoryItems(prev => prev.map(i => i.id === item.id ? item : i));
         if (isSupabaseConnected) {
-            await SupabaseService.updateInventory(item);
+            try {
+                await SupabaseService.updateInventory(item);
+            } catch (e) {
+                console.error('Failed to update inventory item in Supabase:', e);
+                showToast('Failed to update inventory item in cloud', 'error');
+            }
         }
     };
     const deleteInventoryItem = async (id) => {
         setInventoryItems(prev => prev.filter(i => i.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deleteInventory(id);
+            try {
+                await SupabaseService.deleteInventory(id);
+            } catch (e) {
+                console.error('Failed to delete inventory item from Supabase:', e);
+                showToast('Failed to delete inventory item from cloud', 'error');
+            }
         }
     };
 
@@ -225,19 +240,34 @@ export const DataProvider = ({ children }) => {
     const addVendor = async (v) => {
         setVendors(prev => [...prev, v]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertVendor(v);
+            try {
+                await SupabaseService.insertVendor(v);
+            } catch (e) {
+                console.error('Failed to add vendor to Supabase:', e);
+                showToast('Failed to save vendor to cloud', 'error');
+            }
         }
     };
     const updateVendor = async (v) => {
         setVendors(prev => prev.map(item => item.id === v.id ? v : item));
         if (isSupabaseConnected) {
-            await SupabaseService.updateVendor(v);
+            try {
+                await SupabaseService.updateVendor(v);
+            } catch (e) {
+                console.error('Failed to update vendor in Supabase:', e);
+                showToast('Failed to update vendor in cloud', 'error');
+            }
         }
     };
     const deleteVendor = async (id) => {
         setVendors(prev => prev.filter(v => v.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deleteVendor(id);
+            try {
+                await SupabaseService.deleteVendor(id);
+            } catch (e) {
+                console.error('Failed to delete vendor from Supabase:', e);
+                showToast('Failed to delete vendor from cloud', 'error');
+            }
         }
     };
 
@@ -245,19 +275,34 @@ export const DataProvider = ({ children }) => {
     const addProduct = async (p) => {
         setProducts(prev => [...prev, p]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertProduct(p);
+            try {
+                await SupabaseService.insertProduct(p);
+            } catch (e) {
+                console.error('Failed to add product to Supabase:', e);
+                showToast('Failed to save product to cloud', 'error');
+            }
         }
     };
     const updateProduct = async (p) => {
         setProducts(prev => prev.map(item => item.id === p.id ? p : item));
         if (isSupabaseConnected) {
-            await SupabaseService.updateProduct(p);
+            try {
+                await SupabaseService.updateProduct(p);
+            } catch (e) {
+                console.error('Failed to update product in Supabase:', e);
+                showToast('Failed to update product in cloud', 'error');
+            }
         }
     };
     const deleteProduct = async (id) => {
         setProducts(prev => prev.filter(p => p.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deleteProduct(id);
+            try {
+                await SupabaseService.deleteProduct(id);
+            } catch (e) {
+                console.error('Failed to delete product from Supabase:', e);
+                showToast('Failed to delete product from cloud', 'error');
+            }
         }
     };
 
@@ -265,19 +310,34 @@ export const DataProvider = ({ children }) => {
     const addOrder = async (order) => {
         setOrders(prev => [...prev, order]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertOrder(order);
+            try {
+                await SupabaseService.insertOrder(order);
+            } catch (e) {
+                console.error('Failed to add order to Supabase:', e);
+                showToast('Failed to save order to cloud', 'error');
+            }
         }
     };
     const updateOrder = async (order) => {
         setOrders(prev => prev.map(o => o.id === order.id ? order : o));
         if (isSupabaseConnected) {
-            await SupabaseService.updateOrder(order);
+            try {
+                await SupabaseService.updateOrder(order);
+            } catch (e) {
+                console.error('Failed to update order in Supabase:', e);
+                showToast('Failed to update order in cloud', 'error');
+            }
         }
     };
     const deleteOrder = async (id) => {
         setOrders(prev => prev.filter(o => o.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deleteOrder(id);
+            try {
+                await SupabaseService.deleteOrder(id);
+            } catch (e) {
+                console.error('Failed to delete order from Supabase:', e);
+                showToast('Failed to delete order from cloud', 'error');
+            }
         }
     };
 
@@ -285,19 +345,34 @@ export const DataProvider = ({ children }) => {
     const addPO = async (po) => {
         setPurchaseOrders(prev => [...prev, po]);
         if (isSupabaseConnected) {
-            await SupabaseService.insertPO(po);
+            try {
+                await SupabaseService.insertPO(po);
+            } catch (e) {
+                console.error('Failed to add purchase order to Supabase:', e);
+                showToast('Failed to save purchase order to cloud', 'error');
+            }
         }
     };
     const updatePO = async (po) => {
         setPurchaseOrders(prev => prev.map(p => p.id === po.id ? po : p));
         if (isSupabaseConnected) {
-            await SupabaseService.updatePO(po);
+            try {
+                await SupabaseService.updatePO(po);
+            } catch (e) {
+                console.error('Failed to update purchase order in Supabase:', e);
+                showToast('Failed to update purchase order in cloud', 'error');
+            }
         }
     };
     const deletePO = async (id) => {
         setPurchaseOrders(prev => prev.filter(p => p.id !== id));
         if (isSupabaseConnected) {
-            await SupabaseService.deletePO(id);
+            try {
+                await SupabaseService.deletePO(id);
+            } catch (e) {
+                console.error('Failed to delete purchase order from Supabase:', e);
+                showToast('Failed to delete purchase order from cloud', 'error');
+            }
         }
     };
 
