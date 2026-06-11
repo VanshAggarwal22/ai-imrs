@@ -1,0 +1,4 @@
+- [ ] Update `blackbox_mcp_settings.json` to configure MCP server `github.com/github/github-mcp-server` using the local Docker-based GitHub MCP server (`ghcr.io/github/github-mcp-server`).
+- [ ] Install/enable the server config in the settings (done via file update).
+- [ ] Demonstrate capabilities by running the server’s CLI tool search via Docker to fetch at least one matching tool.
+- [ ] (Optional if required by the demo) run a second command to execute a tool like `get_file_contents` for a known repo/path.
