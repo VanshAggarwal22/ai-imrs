@@ -45,7 +45,7 @@ export const DataProvider = ({ children }) => {
                 const cloudData = await SupabaseService.fetchAllData();
                 if (cloudData) {
                     // Map Inventory
-                    if (cloudData.inventory?.length) {
+                    if (cloudData.inventory) {
                         const mappedInventory = cloudData.inventory.map(i => ({
                             id: i.id,
                             material: i.material,
@@ -62,7 +62,7 @@ export const DataProvider = ({ children }) => {
                     }
 
                     // Map Vendors
-                    if (cloudData.vendors?.length) {
+                    if (cloudData.vendors) {
                         const mappedVendors = cloudData.vendors.map(v => ({
                             id: v.id,
                             name: v.name,
@@ -76,7 +76,7 @@ export const DataProvider = ({ children }) => {
                     }
 
                     // Map Products
-                    if (cloudData.products?.length) {
+                    if (cloudData.products) {
                         const mappedProducts = cloudData.products.map(p => ({
                             id: p.id,
                             name: p.name,
@@ -93,7 +93,7 @@ export const DataProvider = ({ children }) => {
                     }
 
                     // Map Leads
-                    if (cloudData.leads?.length) {
+                    if (cloudData.leads) {
                         const mappedLeads = cloudData.leads.map(l => ({
                             id: l.id,
                             company: l.company,
@@ -113,7 +113,7 @@ export const DataProvider = ({ children }) => {
                     }
 
                     // Map Orders
-                    if (cloudData.orders?.length) {
+                    if (cloudData.orders) {
                         const mappedOrders = cloudData.orders.map(o => ({
                             id: o.id,
                             customer: o.customer,
@@ -133,7 +133,7 @@ export const DataProvider = ({ children }) => {
                     }
 
                     // Map POs
-                    if (cloudData.purchaseOrders?.length) {
+                    if (cloudData.purchaseOrders) {
                         const mappedPOs = cloudData.purchaseOrders.map(po => ({
                             id: po.id,
                             vendorId: po.vendor_id,
