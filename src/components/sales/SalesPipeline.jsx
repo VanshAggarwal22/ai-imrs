@@ -34,8 +34,6 @@ export default function SalesPipeline() {
         notes: '',
     });
 
-    const getLeadsByStage = (stage) => allLeads.filter(l => l.stage === stage);
-
     const totalPipeline = allLeads.reduce((sum, l) => sum + l.value, 0);
 
     const handleAddLead = (e) => {

@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
     dashboardKPIs, revenueData, productionData, orders,
-    mrpAlerts, inspectionLogs
+    mrpAlerts
 } from '../../data/mockData';
 import { useState } from 'react';
 import { useData } from '../../context/DataContext';

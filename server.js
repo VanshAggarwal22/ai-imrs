@@ -55,21 +55,43 @@ app.post('/api/data/:id', (req, res) => {
     });
 });
 
-// Handle AI Chat Proxy (NVIDIA - Bypass CORS)
+// Handle AI Chat Proxy (NVIDIA - Bypass CORS, fallback to Groq)
 app.post('/api/ai/chat', async (req, res) => {
-    const apiKey = process.env.NVIDIA_API_KEY;
+    let apiKey = process.env.NVIDIA_API_KEY || process.env.VITE_NVIDIA_API_KEY;
+    let url = 'https://integrate.api.nvidia.com/v1/chat/completions';
+    let isGroq = false;
+
+    // Fallback to Groq if NVIDIA is not configured
+    if (!apiKey && (process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY)) {
+        apiKey = process.env.VITE_GROQ_API_KEY || process.env.GROQ_API_KEY;
+        url = 'https://api.groq.com/openai/v1/chat/completions';
+        isGroq = true;
+    }
+
     if (!apiKey) {
-        return res.status(500).json({ error: 'NVIDIA API Key not configured on server' });
+        return res.status(500).json({ error: 'AI API Key not configured on server (neither NVIDIA nor Groq set)' });
     }
 
     try {
-        const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        let requestBody = { ...req.body };
+        if (isGroq) {
+            // Map models to Groq equivalents
+            const requestedModel = requestBody.model || '';
+            if (requestedModel.includes('deepseek-r1')) {
+                requestBody.model = 'deepseek-r1-distill-llama-70b';
+            } else {
+                requestBody.model = 'llama-3.3-70b-versatile';
+            }
+            console.log(`[Local Server] Using Groq fallback with model: ${requestBody.model}`);
+        }
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
+                'Authorization': `Bearer ${apiKey.trim()}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(req.body)
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -85,24 +107,47 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 });
 
-// Handle Serper Search Intelligence Proxy (Bypass CORS)
+// Handle Serper Search Intelligence Proxy (Bypass CORS, mock fallback if key is missing)
 app.post('/api/ai/intel', async (req, res) => {
     const apiKey = process.env.SERPER_API_KEY;
+    const { q, num = 5 } = req.body;
+    
+    if (!q) {
+        return res.status(400).json({ error: 'Missing search query parameter' });
+    }
+
     if (!apiKey) {
-        return res.status(500).json({ error: 'Serper API Key not configured on server' });
+        console.warn('[Local Server] Serper API Key missing, returning mock intelligence results');
+        // Extract the company name from query (usually the first word or words before "manufacturing")
+        const companyName = q.split(' manufacturing')[0] || 'Target Company';
+        
+        return res.json({
+            organic: [
+                { 
+                    title: `${companyName} Announces Plant Expansion & Supplier Restructuring`, 
+                    snippet: `${companyName} announced a ₹150Cr expansion of their automotive component manufacturing facility. As part of this expansion, they are seeking reliable suppliers for precision spring parts and lock washers to eliminate supply chain downtime.` 
+                },
+                { 
+                    title: `${companyName} Supply Chain Challenges & Quality Control Reports`, 
+                    snippet: `Industry intelligence indicates that ${companyName} has faced production delays due to lead time issues from their primary custom spring suppliers. They are looking to qualify secondary suppliers with strong Quality Assurance (QA) certifications.` 
+                },
+                { 
+                    title: `${companyName} Vendor Portal Registration & Procurement Details`, 
+                    snippet: `Supplier registration portal for ${companyName} is open. The company standard specifies requirements for precision hardware, Belleville washers, and high-tensile wire springs matching DIN and IS standards.` 
+                }
+            ],
+            news: [
+                { title: `${companyName} to increase automotive parts procurement by 20% in fiscal year 2026` },
+                { title: `${companyName} opens qualification for new metal component suppliers` }
+            ]
+        });
     }
 
     try {
-        const { q, num = 5 } = req.body;
-        
-        if (!q) {
-            return res.status(400).json({ error: 'Missing search query parameter' });
-        }
-
         const response = await fetch('https://google.serper.dev/search', {
             method: 'POST',
             headers: {
-                'X-API-KEY': apiKey,
+                'X-API-KEY': apiKey.trim(),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ q, num })

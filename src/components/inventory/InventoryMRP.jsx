@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Package, AlertTriangle, ScanBarcode, FileDown, Plus,
     ArrowRight, CheckCircle, XCircle, Clock, X, Save, Trash2, Edit,
     Settings, ShoppingCart, Factory
 } from 'lucide-react';
-import { mrpAlerts, washerDimensions, washerPricingMatrix, materials } from '../../data/mockData';
+import { mrpAlerts } from '../../data/mockData';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
 import { SupabaseService } from '../../services/SupabaseService';
@@ -51,7 +51,7 @@ export default function InventoryMRP() {
     const { showToast } = useToast();
     const navigate = useNavigate();
     const {
-        inventoryItems, setInventoryItems,
+        inventoryItems,
         vendors, setVendors,
         suppliersList, setSuppliersList,
         products, setProducts,
@@ -61,13 +61,11 @@ export default function InventoryMRP() {
 
     const [tab, setTab] = useState('inventory');
     const [vendorTypeTab, setVendorTypeTab] = useState('raw'); // 'raw' or 'finished'
-    const [scanResult, setScanResult] = useState(null);
     const [showModal, setShowModal] = useState(null);
     const [editingItem, setEditingItem] = useState(null);
 
     // Form states
-    const [vendorForm, setVendorForm] = useState({ name: '', location: '', leadTime: '', paymentTerms: '', rating: '4.5' });
-    const [pricingMatrix, setPricingMatrix] = useState([]); 
+    const [vendorForm, setVendorForm] = useState({ name: '', location: '', leadTime: '', paymentTerms: '', rating: '4.5' }); 
     
     const [productForm, setProductForm] = useState({
         name: '',
@@ -88,8 +86,6 @@ export default function InventoryMRP() {
         const allItems = [...inventoryItems, ...products.map(p => ({ ...p, lotNumber: p.id, wireGauge: p.type }))];
         if (allItems.length === 0) return;
         const item = allItems[Math.floor(Math.random() * allItems.length)];
-        setScanResult(item);
-        setTimeout(() => setScanResult(null), 5000);
         showToast(`Item ${item.lotNumber || item.id} scanned successfully`);
     };
 

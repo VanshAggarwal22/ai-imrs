@@ -162,7 +162,7 @@ export default function QuotingEngine() {
             total: total.toFixed(0),
             unitPrice: unitPrice.toFixed(3),
         };
-    }, [washerForm, washerStandards]);
+    }, [washerForm]);
 
     // Washer Source calculation (Procurement pricing)
     const washerSourceCalc = useMemo(() => {
@@ -215,7 +215,7 @@ export default function QuotingEngine() {
             total: total.toFixed(0),
             unitPrice: unitPrice.toFixed(3),
         };
-    }, [washerSourceForm, washerPricingMatrix, washerStandards]);
+    }, [washerSourceForm]);
 
 
     const activeForm = tab === 'spring' ? springForm : (tab === 'washer' ? washerForm : washerSourceForm);
@@ -268,7 +268,7 @@ export default function QuotingEngine() {
         }
     };
 
-    const quoteNumber = `QT-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const [quoteNumber] = useState(() => `QT-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`);
 
     const handleQuickSend = async () => {
         if (!receiverEmail) {

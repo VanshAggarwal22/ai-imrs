@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
     Search, Filter, MapPin, Globe, TrendingUp, Mail, 
     MessageSquare, PhoneCall, Zap, Star, AlertCircle, CheckCircle2,

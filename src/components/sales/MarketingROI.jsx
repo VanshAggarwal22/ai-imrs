@@ -151,7 +151,6 @@ export default function MarketingROI() {
                                 {campaigns.map(c => {
                                     const roi = ((c.revenue - c.spend) / c.spend * 100).toFixed(0);
                                     const cpl = (c.spend / c.leadsGenerated).toFixed(0);
-                                    const cac = (c.spend / c.conversions).toFixed(0);
                                     return (
                                         <tr key={c.id}>
                                             <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</td>

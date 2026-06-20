@@ -118,7 +118,7 @@ export default function PurchaseOrders() {
             try {
                 await deletePO(id);
                 showToast('✅ PO deleted');
-            } catch (e) {
+            } catch {
                 showToast('❌ Failed to delete PO');
             }
         }

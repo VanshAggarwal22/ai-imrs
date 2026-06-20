@@ -46,7 +46,7 @@ export const AiService = {
         
         try {
             return JSON.parse(content);
-        } catch (e) {
+        } catch {
             // Strip markdown just in case Llama3 ignored the instruction
             const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(cleaned);
@@ -137,7 +137,7 @@ export const AiService = {
         
         try {
             return JSON.parse(content);
-        } catch (e) {
+        } catch {
             const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(cleaned);
         }

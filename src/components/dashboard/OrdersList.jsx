@@ -44,7 +44,7 @@ export default function OrdersList() {
         try {
             await updateOrder(updatedOrder);
             showToast(isLastStage ? '✅ Order completed!' : `✅ Moved to ${stages[currentIndex + 1]}`);
-        } catch (e) {
+        } catch {
             showToast('❌ Failed to update order');
         }
     };
@@ -60,7 +60,7 @@ export default function OrdersList() {
                 });
                 showToast('✅ Order marked as completed');
                 setShowDetail(false);
-            } catch (e) {
+            } catch {
                 showToast('❌ Failed to complete order');
             }
         }

@@ -35,7 +35,7 @@ export const DataProvider = ({ children }) => {
     const [orders, setOrders] = useState(() => initData('imrs_orders', initialOrders));
     const [purchaseOrders, setPurchaseOrders] = useState(() => initData('imrs_pos', []));
     const [pendingPO, setPendingPO] = useState(null); // For pre-filling PO form from MRP alerts
-    const [isSupabaseConnected, setIsSupabaseConnected] = useState(!!supabase);
+    const isSupabaseConnected = !!supabase;
 
     // Initial load from Supabase
     useEffect(() => {

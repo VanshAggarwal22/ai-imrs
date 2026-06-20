@@ -3,7 +3,7 @@ import {
     Package, Clock, CheckCircle, Truck, Eye, RefreshCw,
     ShoppingCart, FileText, ArrowRight
 } from 'lucide-react';
-import { customerPortalOrders, orders } from '../../data/mockData';
+import { customerPortalOrders } from '../../data/mockData';
 
 export default function CustomerPortal() {
     const [selectedOrder, setSelectedOrder] = useState(customerPortalOrders[0]);
