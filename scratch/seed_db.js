@@ -136,16 +136,43 @@ const mappedQualityLogs = inspectionLogs.map(l => ({
     order_id: l.orderId,
     batch_no: l.batchNo,
     date: l.date,
-    inspector: l.inspector,
     product: l.product,
-    free_length: l.freeLength,
-    solid_height: l.solidHeight,
-    spring_rate: l.springRate,
-    load_test: l.loadTest,
-    overall_status: l.overallStatus
+    overall_status: l.overallStatus,
+    details: {
+        inspector: l.inspector,
+        freeLength: l.freeLength,
+        solidHeight: l.solidHeight,
+        springRate: l.springRate,
+        loadTest: l.loadTest
+    }
 }));
 
 async function seed() {
+    console.log('Clearing existing tables first to prevent duplicate key errors...');
+    const tablesToClear = [
+        'purchase_orders',
+        'quality_logs',
+        'orders',
+        'products',
+        'leads',
+        'inventory',
+        'vendors',
+        'app_settings'
+    ];
+    for (const t of tablesToClear) {
+        try {
+            const { data, error } = await supabase.from(t).select('*').limit(1);
+            if (error) continue;
+            let deleteField = 'id';
+            if (data.length > 0) {
+                deleteField = Object.keys(data[0])[0];
+            }
+            await supabase.from(t).delete().neq(deleteField, '___non_existent_value_to_delete_all_rows___');
+        } catch (e) {
+            console.error(`Error clearing table '${t}':`, e.message);
+        }
+    }
+
     console.log('Seeding Supabase tables with initial mock data...');
     
     const jobs = [
