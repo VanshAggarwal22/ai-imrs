@@ -74,9 +74,11 @@ export default function AiChat() {
                         </div>
                         <button
                             onClick={() => setOpen(false)}
+                            aria-label="Close chat window"
+                            title="Close chat window"
                             style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                         >
-                            <X size={18} />
+                            <X size={18} aria-hidden="true" />
                         </button>
                     </div>
                     <div className="chat-messages">
@@ -93,13 +95,27 @@ export default function AiChat() {
                             onKeyDown={e => e.key === 'Enter' && handleSend()}
                             placeholder="Ask about orders, inventory..."
                             disabled={isLoading}
+                            aria-label="Message to AI assistant"
                         />
-                        <button onClick={handleSend} disabled={isLoading}><Send size={16} /></button>
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading}
+                            aria-label="Send message"
+                            title="Send message"
+                        >
+                            <Send size={16} aria-hidden="true" />
+                        </button>
                     </div>
                 </div>
             )}
-            <button className="chat-toggle" onClick={() => setOpen(!open)}>
-                {open ? <X size={22} /> : <MessageSquare size={22} />}
+            <button
+                className="chat-toggle"
+                onClick={() => setOpen(!open)}
+                aria-expanded={open}
+                aria-label={open ? "Close AI Assistant" : "Open AI Assistant"}
+                title={open ? "Close AI Assistant" : "Open AI Assistant"}
+            >
+                {open ? <X size={22} aria-hidden="true" /> : <MessageSquare size={22} aria-hidden="true" />}
             </button>
         </div>
     );

@@ -1,0 +1,1 @@
+## 2024-07-09 - Accessible AI Chat Icons\n**Learning:** The AI chat widget's buttons (Close, Send, and Toggle) were missing screen reader support and tooltip titles, a common pattern for icon-only buttons in the application.\n**Action:** Remember to add `aria-label`, `title`, and `aria-hidden="true"` to Lucide icons inside buttons. Added `aria-expanded` to toggle buttons.
