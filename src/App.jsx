@@ -14,6 +14,7 @@ import PurchaseOrders from './components/inventory/PurchaseOrders';
 import QualityControl from './components/quality/QualityControl';
 import CustomerPortal from './components/portal/CustomerPortal';
 import Settings from './components/settings/Settings';
+import NotFound from './components/layout/NotFound';
 
 import { ToastProvider } from './context/ToastContext';
 import { DataProvider } from './context/DataContext';
@@ -43,6 +44,7 @@ function App() {
                 <Route path="/quality" element={<QualityControl />} />
                 <Route path="/portal" element={<CustomerPortal />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
             <AiChat />
