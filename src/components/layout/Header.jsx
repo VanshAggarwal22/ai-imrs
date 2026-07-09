@@ -17,7 +17,7 @@ const pageTitles = {
 
 export default function Header() {
     const location = useLocation();
-    const title = pageTitles[location.pathname] || 'Dashboard';
+    const title = pageTitles[location.pathname] || 'Page Not Found';
 
     return (
         <header className="header">
