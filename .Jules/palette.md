@@ -1,0 +1,1 @@
+## 2024-05-18 - Aria Labels on Icon Buttons\n**Learning:** Icon-only buttons without ARIA labels are a common accessibility anti-pattern. Identifying these across chat and header components drastically improves screen reader compatibility without altering visual design.\n**Action:** Always verify icon-only buttons have descriptive `aria-label` attributes.
