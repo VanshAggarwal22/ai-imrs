@@ -30,7 +30,7 @@ export default function Header() {
                     <Search />
                     <input placeholder="Search orders, leads, inventory..." />
                 </div>
-                <button className="header-btn">
+                <button className="header-btn" aria-label="Notifications">
                     <Bell size={18} />
                     <span className="badge-dot"></span>
                 </button>
