@@ -28,9 +28,16 @@ export default function Header() {
             <div className="header-right">
                 <div className="header-search">
                     <Search />
-                    <input placeholder="Search orders, leads, inventory..." />
+                    <input
+                        placeholder="Search orders, leads, inventory..."
+                        aria-label="Search"
+                    />
                 </div>
-                <button className="header-btn">
+                <button
+                    className="header-btn"
+                    aria-label="Notifications"
+                    title="Notifications"
+                >
                     <Bell size={18} />
                     <span className="badge-dot"></span>
                 </button>
