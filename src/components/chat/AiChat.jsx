@@ -74,6 +74,8 @@ export default function AiChat() {
                         </div>
                         <button
                             onClick={() => setOpen(false)}
+                            aria-label="Close chat"
+                            title="Close chat"
                             style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                         >
                             <X size={18} />
@@ -93,12 +95,25 @@ export default function AiChat() {
                             onKeyDown={e => e.key === 'Enter' && handleSend()}
                             placeholder="Ask about orders, inventory..."
                             disabled={isLoading}
+                            aria-label="Chat input"
                         />
-                        <button onClick={handleSend} disabled={isLoading}><Send size={16} /></button>
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading}
+                            aria-label="Send message"
+                            title="Send message"
+                        >
+                            <Send size={16} />
+                        </button>
                     </div>
                 </div>
             )}
-            <button className="chat-toggle" onClick={() => setOpen(!open)}>
+            <button
+                className="chat-toggle"
+                onClick={() => setOpen(!open)}
+                aria-label={open ? "Close chat" : "Open chat"}
+                title={open ? "Close chat" : "Open chat"}
+            >
                 {open ? <X size={22} /> : <MessageSquare size={22} />}
             </button>
         </div>

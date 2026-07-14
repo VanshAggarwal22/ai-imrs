@@ -1,0 +1,3 @@
+## 2025-02-27 - Icon-only button accessibility
+**Learning:** Found a widespread pattern across the application where icon-only buttons (like the chat toggle, close buttons, send buttons, and notification bell) are missing `aria-label`s. This makes the interface inaccessible to screen reader users as they receive no context about the button's action.
+**Action:** Always verify that buttons containing only icons include an appropriate `aria-label` describing their function. This pattern should be documented and shared for future component implementations.
