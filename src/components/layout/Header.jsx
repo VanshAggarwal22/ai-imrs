@@ -27,11 +27,17 @@ export default function Header() {
             </div>
             <div className="header-right">
                 <div className="header-search">
-                    <Search />
-                    <input placeholder="Search orders, leads, inventory..." />
+                    <Search aria-hidden="true" />
+                    <input
+                        placeholder="Search orders, leads, inventory..."
+                        aria-label="Search"
+                    />
                 </div>
-                <button className="header-btn">
-                    <Bell size={18} />
+                <button
+                    className="header-btn"
+                    aria-label="Notifications"
+                >
+                    <Bell size={18} aria-hidden="true" />
                     <span className="badge-dot"></span>
                 </button>
                 <div className="header-avatar">VS</div>
