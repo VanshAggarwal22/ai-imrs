@@ -345,6 +345,8 @@ export default function PurchaseOrders() {
                                     onClick={() => handleEditPO(po)}
                                     className="btn btn-secondary btn-sm btn-icon"
                                     style={{ width: '32px', height: '32px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                                    aria-label="Edit Purchase Order"
+                                    title="Edit Purchase Order"
                                 >
                                     <Edit2 size={14} />
                                 </button>
@@ -352,6 +354,8 @@ export default function PurchaseOrders() {
                                     onClick={() => handleDeletePO(po.id)}
                                     className="btn btn-danger btn-sm btn-icon"
                                     style={{ width: '32px', height: '32px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                                    aria-label="Delete Purchase Order"
+                                    title="Delete Purchase Order"
                                 >
                                     <Trash2 size={14} />
                                 </button>
