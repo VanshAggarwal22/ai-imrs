@@ -73,6 +73,7 @@ export default function AiChat() {
                             <p>● Online</p>
                         </div>
                         <button
+                            aria-label="Close chat"
                             onClick={() => setOpen(false)}
                             style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                         >
@@ -94,11 +95,11 @@ export default function AiChat() {
                             placeholder="Ask about orders, inventory..."
                             disabled={isLoading}
                         />
-                        <button onClick={handleSend} disabled={isLoading}><Send size={16} /></button>
+                        <button aria-label="Send message" onClick={handleSend} disabled={isLoading}><Send size={16} /></button>
                     </div>
                 </div>
             )}
-            <button className="chat-toggle" onClick={() => setOpen(!open)}>
+            <button aria-label={open ? 'Close chat' : 'Open AI chat'} className="chat-toggle" onClick={() => setOpen(!open)}>
                 {open ? <X size={22} /> : <MessageSquare size={22} />}
             </button>
         </div>
