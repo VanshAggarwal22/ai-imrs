@@ -1,4 +1,5 @@
 import { supabase } from './SupabaseService';
+import DOMPurify from 'dompurify';
 
 const CONFIG_KEY = 'imrs_smtp_config';
 const SUPABASE_TABLE = 'app_settings';
@@ -83,7 +84,7 @@ export const EmailService = {
         wrapper.style.zIndex = '-9999';
         wrapper.style.pointerEvents = 'none';
         
-        wrapper.innerHTML = htmlString;
+        wrapper.innerHTML = DOMPurify.sanitize(htmlString);
         document.body.appendChild(wrapper);
 
         const pageEl = wrapper.firstElementChild;
