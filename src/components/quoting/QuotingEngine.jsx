@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Calculator, Download, RotateCcw, ChevronDown, PackageSearch, Save, Send, FileText } from 'lucide-react';
+import { Calculator, Download, RotateCcw, PackageSearch, Save, Send, FileText } from 'lucide-react';
 import {
     suppliers, materials, materialPricing, wireDensity, washerVendors,
     washerDimensions, washerPricingMatrix, washerStandards, companyDetails
