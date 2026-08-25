@@ -118,15 +118,22 @@ export default function InventoryMRP() {
         setShowModal('product');
     };
 
-    const handleSaveProduct = () => {
+    const handleSaveProduct = async () => {
         if (!productForm.name) return;
         if (editingItem) {
-            setProducts(prev => prev.map(p => p.id === editingItem.id ? { ...productForm, id: p.id } : p));
+            const updated = { ...productForm, id: editingItem.id };
+            setProducts(prev => prev.map(p => p.id === editingItem.id ? updated : p));
+            if (isSupabaseConnected) {
+                await SupabaseService.updateProduct(updated);
+            }
             showToast('Product updated successfully');
         } else {
             const newId = productForm.category === 'Spring' ? `SP-${Date.now().toString().slice(-4)}` : `WSH-${Date.now().toString().slice(-4)}`;
             const newItem = { ...productForm, id: newId };
             setProducts(prev => [...prev, newItem]);
+            if (isSupabaseConnected) {
+                await SupabaseService.insertProduct(newItem);
+            }
             showToast(`${productForm.category} added to inventory`);
         }
         setShowModal(null);
