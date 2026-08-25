@@ -33,6 +33,38 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // Serve static files from the Vite build output
 app.use(express.static(join(__dirname, 'dist')));
 
+// Authentication Middleware
+const requireAuth = (req, res, next) => {
+    const apiSecret = process.env.API_SECRET;
+
+    // Fail secure if API_SECRET is not configured
+    if (!apiSecret) {
+        console.error('[Security] API_SECRET is not configured on the server. Rejecting request.');
+        return res.status(500).json({ error: 'Server misconfiguration: Authentication is unavailable.' });
+    }
+
+    const authHeader = req.headers.authorization;
+    const apiKeyHeader = req.headers['x-api-key'];
+
+    let providedToken = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        providedToken = authHeader.split(' ')[1];
+    } else if (apiKeyHeader) {
+        providedToken = apiKeyHeader;
+    }
+
+    if (!providedToken) {
+        return res.status(401).json({ error: 'Authentication required. Missing token.' });
+    }
+
+    if (providedToken !== apiSecret) {
+        return res.status(403).json({ error: 'Invalid authentication token.' });
+    }
+
+    next();
+};
+
 // API Endpoints
 app.get('/api/data/:id', (req, res) => {
     const id = req.params.id;
@@ -44,7 +76,7 @@ app.get('/api/data/:id', (req, res) => {
     });
 });
 
-app.post('/api/data/:id', (req, res) => {
+app.post('/api/data/:id', requireAuth, (req, res) => {
     const id = req.params.id;
     const data = JSON.stringify(req.body);
     db.run(`INSERT OR REPLACE INTO storage (id, data) VALUES (?, ?)`, [id, data], function(err) {
