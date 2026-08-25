@@ -8,7 +8,7 @@ import nodemailer from 'nodemailer';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(cors());
@@ -207,6 +207,8 @@ app.get('*', (req, res) => {
     res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, '0.0.0.0', () => {
     console.log(`IMRS server running on port ${PORT}`);
-});
+    });
+}
