@@ -6,7 +6,7 @@ import {
 import { inspectionLogs, companyDetails } from '../../data/mockData';
 import { useToast } from '../../context/ToastContext';
 import { EmailService } from '../../services/EmailService';
-import { Mail, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 export default function QualityControl() {
     const { showToast } = useToast();
