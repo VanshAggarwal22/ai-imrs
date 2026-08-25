@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Phone, Mail, Calendar, ExternalLink, X, Trash2 } from 'lucide-react';
+import { Plus, Phone, Mail, ExternalLink, X, Trash2 } from 'lucide-react';
 import { pipelineStages } from '../../data/mockData';
 import { useData } from '../../context/DataContext';
 
