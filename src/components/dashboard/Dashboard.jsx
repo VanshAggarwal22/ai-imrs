@@ -10,7 +10,7 @@ import {
     dashboardKPIs, revenueData, productionData, orders,
     mrpAlerts
 } from '../../data/mockData';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 
 const formatCurrency = (v) => `₹${(v / 100000).toFixed(1)}L`;
@@ -35,8 +35,13 @@ export default function Dashboard() {
     const [showInstructions, setShowInstructions] = useState(false);
 
     // Dynamic KPI calculations
-    const activePipelineValue = allLeads.reduce((sum, l) => sum + l.value, 0);
-    const criticalInventory = inventoryItems.filter(i => i.status === 'Critical').length;
+    const activePipelineValue = useMemo(() => {
+        return allLeads.reduce((sum, l) => sum + l.value, 0);
+    }, [allLeads]);
+
+    const criticalInventory = useMemo(() => {
+        return inventoryItems.filter(i => i.status === 'Critical').length;
+    }, [inventoryItems]);
 
     const kpis = [
         { label: 'Monthly Revenue', value: formatCurrency(dashboardKPIs.monthlyRevenue), change: `+${dashboardKPIs.revenueChange}%`, up: true, icon: IndianRupee, color: 'green' },
