@@ -7,6 +7,11 @@ export default async function handler(req, res) {
     }
 
     try {
+        const apiKey = req.headers.authorization?.replace('Bearer ', '') || req.headers['x-api-key'];
+        if (!process.env.API_KEY || apiKey !== process.env.API_KEY) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
         const { category, records } = req.body;
 
         // Initialize auth using Service Account credentials from environment variables
