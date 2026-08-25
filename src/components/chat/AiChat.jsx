@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Send, Sparkles } from 'lucide-react';
 
 const NVIDIA_MODEL = 'deepseek-ai/deepseek-r1';
 
