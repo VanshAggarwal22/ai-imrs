@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -11,18 +10,18 @@ import QuotingEngine from './components/quoting/QuotingEngine';
 import MarketingROI from './components/sales/MarketingROI';
 import InventoryMRP from './components/inventory/InventoryMRP';
 import PurchaseOrders from './components/inventory/PurchaseOrders';
-import QualityControl from './components/quality/QualityControl';
+import VendorPortal from './components/inventory/VendorPortal';
+import QualityControl from './components/qc/QualityControl';
 import CustomerPortal from './components/portal/CustomerPortal';
 import Settings from './components/settings/Settings';
+import RFQTracker from './components/rfq/RFQTracker';
+import Login from './components/auth/Login';
 
 import { ToastProvider } from './context/ToastContext';
 import { DataProvider } from './context/DataContext';
+// Auth is disabled for now
 
 function App() {
-  useEffect(() => {
-    // Login removed for now; app renders without auth gating.
-  }, []);
-
   return (
     <ToastProvider>
       <DataProvider>
@@ -39,8 +38,10 @@ function App() {
                 <Route path="/marketing" element={<MarketingROI />} />
                 <Route path="/inventory" element={<InventoryMRP />} />
                 <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                <Route path="/rfqs" element={<RFQTracker />} />
                 <Route path="/orders" element={<OrdersList />} />
                 <Route path="/quality" element={<QualityControl />} />
+                <Route path="/vendors" element={<VendorPortal />} />
                 <Route path="/portal" element={<CustomerPortal />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

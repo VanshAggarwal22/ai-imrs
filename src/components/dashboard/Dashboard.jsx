@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell
+    Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 import {
     dashboardKPIs, revenueData, productionData, orders,
@@ -12,6 +12,7 @@ import {
 } from '../../data/mockData';
 import { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { FileText, Percent } from 'lucide-react';
 
 const formatCurrency = (v) => `₹${(v / 100000).toFixed(1)}L`;
 const formatNumber = (v) => v.toLocaleString('en-IN');
@@ -29,7 +30,7 @@ import { useToast } from '../../context/ToastContext';
 
 export default function Dashboard() {
     const { showToast } = useToast();
-    const { allLeads, inventoryItems, isSupabaseConnected, connectSupabase } = useData();
+    const { allLeads, inventoryItems, isSupabaseConnected, connectSupabase, rfqs, priceHistory } = useData();
     const [sbUrl, setSbUrl] = useState('');
     const [sbKey, setSbKey] = useState('');
     const [showInstructions, setShowInstructions] = useState(false);
@@ -37,20 +38,48 @@ export default function Dashboard() {
     // Dynamic KPI calculations
     const activePipelineValue = allLeads.reduce((sum, l) => sum + l.value, 0);
     const criticalInventory = inventoryItems.filter(i => i.status === 'Critical').length;
+    
+    // RFQ Stats
+    const totalRfqs = rfqs?.length || 0;
+    const wonRfqs = rfqs?.filter(r => r.status === 'won').length || 0;
+    const rfqWinRate = totalRfqs > 0 ? ((wonRfqs / totalRfqs) * 100).toFixed(1) : 0;
+
+    // Margin estimation
+    const estimatedMargin = 22.4; // Mock value for overall business margin
 
     const kpis = [
         { label: 'Monthly Revenue', value: formatCurrency(dashboardKPIs.monthlyRevenue), change: `+${dashboardKPIs.revenueChange}%`, up: true, icon: IndianRupee, color: 'green' },
         { label: 'Active Orders', value: dashboardKPIs.activeOrders, change: '+2 this week', up: true, icon: ShoppingCart, color: 'blue' },
-        { label: 'Machine Utilization', value: `${dashboardKPIs.machineUtilization}%`, change: '-3% vs last month', up: false, icon: Gauge, color: 'cyan' },
+        { label: 'Est. Avg Margin', value: `${estimatedMargin}%`, change: '+1.2% this quarter', up: true, icon: Percent, color: 'emerald' },
+        { label: 'RFQ Win Rate', value: `${rfqWinRate}%`, change: `${wonRfqs} Won / ${totalRfqs} Total`, up: rfqWinRate >= 20, icon: FileText, color: 'indigo' },
         { label: 'Inventory Alerts', value: criticalInventory, change: `${criticalInventory} critical`, up: criticalInventory === 0, icon: AlertTriangle, color: criticalInventory > 0 ? 'red' : 'green' },
         { label: 'Pipeline Value', value: formatCurrency(activePipelineValue), change: `${allLeads.length} leads`, up: true, icon: Target, color: 'purple' },
+        { label: 'Machine Utilization', value: `${dashboardKPIs.machineUtilization}%`, change: '-3% vs last month', up: false, icon: Gauge, color: 'cyan' },
         { label: 'QC Pass Rate', value: `${dashboardKPIs.qualityPassRate}%`, change: 'Below target', up: false, icon: Activity, color: 'orange' },
     ];
+
+    // Orders By Source Calculation
+    const sourceCounts = orders.reduce((acc, order) => {
+        const source = order.source || 'Direct';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+    }, {});
+    const ordersBySourceData = Object.keys(sourceCounts).map(source => ({
+        name: source,
+        value: sourceCounts[source]
+    }));
+
+    // Sparkline data for material cost
+    const sparklineData = (priceHistory?.length > 0 ? priceHistory : [
+        { recordedDate: 'Jan', pricePerKg: 85 }, { recordedDate: 'Feb', pricePerKg: 88 },
+        { recordedDate: 'Mar', pricePerKg: 86 }, { recordedDate: 'Apr', pricePerKg: 91 },
+        { recordedDate: 'May', pricePerKg: 94 }, { recordedDate: 'Jun', pricePerKg: 92 }
+    ]).sort((a, b) => new Date(a.recordedDate) - new Date(b.recordedDate)).slice(-6);
 
     return (
         <div className="page-content">
             {/* KPI Cards */}
-            <div className="kpi-grid">
+            <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 {kpis.map((kpi, i) => (
                     <div className={`kpi-card ${kpi.color} animate-in`} key={i}>
                         <div className={`kpi-icon ${kpi.color}`}>
@@ -125,6 +154,51 @@ export default function Dashboard() {
                             <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Material Trend & Sparkline Row */}
+            <div className="grid-2">
+                <div className="card animate-in">
+                    <div className="card-header">
+                        <div>
+                            <div className="card-title">Material Cost Trend</div>
+                            <div className="card-subtitle">Last 6 Recorded Prices (₹/kg)</div>
+                        </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={150}>
+                        <LineChart data={sparklineData}>
+                            <Tooltip contentStyle={{ background: '#1a1f35', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#f1f5f9', fontSize: '12px' }} />
+                            <Line type="monotone" dataKey="pricePerKg" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div className="card animate-in">
+                    <div className="card-header">
+                        <div>
+                            <div className="card-title">Orders by Source</div>
+                            <div className="card-subtitle">Distribution of active & completed orders</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center" style={{ height: '150px' }}>
+                        <ResponsiveContainer width="50%" height="100%">
+                            <PieChart>
+                                <Pie data={ordersBySourceData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value">
+                                    {ordersBySourceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip contentStyle={{ background: '#1a1f35', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#f1f5f9', fontSize: '12px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="flex flex-col gap-2" style={{ flex: 1, paddingLeft: '20px' }}>
+                            {ordersBySourceData.map((s, i) => (
+                                <div key={s.name} className="flex justify-between items-center" style={{ fontSize: 12 }}>
+                                    <span style={{ color: COLORS[i % COLORS.length], fontWeight: 600 }}>● {s.name}</span>
+                                    <span style={{ fontWeight: 700 }}>{s.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 

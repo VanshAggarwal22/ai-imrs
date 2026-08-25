@@ -34,6 +34,9 @@ export const DataProvider = ({ children }) => {
     const [products, setProducts] = useState(() => initData('imrs_products', []));
     const [orders, setOrders] = useState(() => initData('imrs_orders', initialOrders));
     const [purchaseOrders, setPurchaseOrders] = useState(() => initData('imrs_pos', []));
+    const [rfqs, setRFQs] = useState(() => initData('imrs_rfqs', []));
+    const [priceHistory, setPriceHistory] = useState(() => initData('imrs_price_history', []));
+    const [qcReports, setQcReports] = useState(() => initData('imrs_qc_reports', []));
     const [pendingPO, setPendingPO] = useState(null); // For pre-filling PO form from MRP alerts
     const isSupabaseConnected = !!supabase;
 
@@ -127,7 +130,10 @@ export const DataProvider = ({ children }) => {
                             dueDate: o.due_date,
                             material: o.material,
                             wireGauge: o.wire_gauge,
-                            stages: typeof o.stages === 'string' ? JSON.parse(o.stages) : o.stages
+                            stages: typeof o.stages === 'string' ? JSON.parse(o.stages) : o.stages,
+                            source: o.source,
+                            sourceRef: o.source_ref,
+                            rfqId: o.rfq_id
                         }));
                         setOrders(mappedOrders);
                     }
@@ -149,6 +155,58 @@ export const DataProvider = ({ children }) => {
                         }));
                         setPurchaseOrders(mappedPOs);
                     }
+
+                    // Map RFQs
+                    if (cloudData.rfqs) {
+                        const mappedRFQs = cloudData.rfqs.map(r => ({
+                            id: r.id,
+                            source: r.source,
+                            sourceRef: r.source_ref,
+                            customer: r.customer,
+                            items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
+                            quotedAmount: r.quoted_amount ? parseFloat(r.quoted_amount) : null,
+                            status: r.status,
+                            receivedDate: r.received_date,
+                            deadline: r.deadline,
+                            quotedDate: r.quoted_date,
+                            notes: r.notes,
+                            convertedOrderId: r.converted_order_id,
+                            createdAt: r.created_at
+                        }));
+                        setRFQs(mappedRFQs);
+                    }
+
+                    // Map Price History
+                    if (cloudData.priceHistory) {
+                        const mappedPrices = cloudData.priceHistory.map(p => ({
+                            id: p.id,
+                            material: p.material,
+                            wireGauge: p.wire_gauge,
+                            pricePerKg: parseFloat(p.price_per_kg),
+                            supplier: p.supplier,
+                            recordedDate: p.recorded_date,
+                            notes: p.notes,
+                            createdAt: p.created_at
+                        }));
+                        setPriceHistory(mappedPrices);
+                    }
+
+                    // Map QC Reports
+                    if (cloudData.qcReports) {
+                        const mappedQc = cloudData.qcReports.map(q => ({
+                            id: q.id,
+                            orderId: q.order_id,
+                            date: q.date,
+                            inspector: q.inspector,
+                            inspectedQty: parseInt(q.inspected_qty),
+                            passedQty: parseInt(q.passed_qty),
+                            rejectedQty: parseInt(q.rejected_qty),
+                            defectTypes: typeof q.defect_types === 'string' ? JSON.parse(q.defect_types) : q.defect_types,
+                            notes: q.notes,
+                            createdAt: q.created_at
+                        }));
+                        setQcReports(mappedQc);
+                    }
                 }
             }
         };
@@ -163,6 +221,9 @@ export const DataProvider = ({ children }) => {
     useEffect(() => { localStorage.setItem('imrs_products', JSON.stringify(products)); }, [products]);
     useEffect(() => { localStorage.setItem('imrs_orders', JSON.stringify(orders)); }, [orders]);
     useEffect(() => { localStorage.setItem('imrs_pos', JSON.stringify(purchaseOrders)); }, [purchaseOrders]);
+    useEffect(() => { localStorage.setItem('imrs_rfqs', JSON.stringify(rfqs)); }, [rfqs]);
+    useEffect(() => { localStorage.setItem('imrs_price_history', JSON.stringify(priceHistory)); }, [priceHistory]);
+    useEffect(() => { localStorage.setItem('imrs_qc_reports', JSON.stringify(qcReports)); }, [qcReports]);
 
     // ---- GRANULAR CRUD OPERATIONS (Direct Local + Async Supabase) ----
 
@@ -376,6 +437,89 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    // RFQS
+    const addRFQ = async (rfq) => {
+        setRFQs(prev => [...prev, rfq]);
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.insertRFQ(rfq);
+            } catch (e) {
+                console.error('Failed to add RFQ to Supabase:', e);
+                showToast('Failed to save RFQ to cloud', 'error');
+            }
+        }
+    };
+    const updateRFQ = async (rfq) => {
+        setRFQs(prev => prev.map(r => r.id === rfq.id ? rfq : r));
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.updateRFQ(rfq);
+            } catch (e) {
+                console.error('Failed to update RFQ in Supabase:', e);
+                showToast('Failed to update RFQ in cloud', 'error');
+            }
+        }
+    };
+    const deleteRFQ = async (id) => {
+        setRFQs(prev => prev.filter(r => r.id !== id));
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.deleteRFQ(id);
+            } catch (e) {
+                console.error('Failed to delete RFQ from Supabase:', e);
+                showToast('Failed to delete RFQ from cloud', 'error');
+            }
+        }
+    };
+
+    // PRICE HISTORY
+    const addPriceEntry = async (entry) => {
+        setPriceHistory(prev => [entry, ...prev]);
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.insertPriceEntry(entry);
+            } catch (e) {
+                console.error('Failed to add price entry to Supabase:', e);
+                showToast('Failed to save price entry to cloud', 'error');
+            }
+        }
+    };
+    const deletePriceEntry = async (id) => {
+        setPriceHistory(prev => prev.filter(p => p.id !== id));
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.deletePriceEntry(id);
+            } catch (e) {
+                console.error('Failed to delete price entry from Supabase:', e);
+                showToast('Failed to delete price entry from cloud', 'error');
+            }
+        }
+    };
+
+    // QC REPORTS
+    const addQcReport = async (report) => {
+        setQcReports(prev => [report, ...prev]);
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.insertQcReport(report);
+            } catch (e) {
+                console.error('Failed to add QC report to Supabase:', e);
+                showToast('Failed to save QC report to cloud', 'error');
+            }
+        }
+    };
+    const deleteQcReport = async (id) => {
+        setQcReports(prev => prev.filter(q => q.id !== id));
+        if (isSupabaseConnected) {
+            try {
+                await SupabaseService.deleteQcReport(id);
+            } catch (e) {
+                console.error('Failed to delete QC report from Supabase:', e);
+                showToast('Failed to delete QC report from cloud', 'error');
+            }
+        }
+    };
+
     return (
         <DataContext.Provider value={{
             inventoryItems, setInventoryItems, addInventoryItem, updateInventoryItem, deleteInventoryItem,
@@ -385,6 +529,9 @@ export const DataProvider = ({ children }) => {
             products, setProducts, addProduct, updateProduct, deleteProduct,
             orders, setOrders, addOrder, updateOrder, deleteOrder,
             purchaseOrders, setPurchaseOrders, addPO, updatePO, deletePO,
+            rfqs, setRFQs, addRFQ, updateRFQ, deleteRFQ,
+            priceHistory, setPriceHistory, addPriceEntry, deletePriceEntry,
+            qcReports, setQcReports, addQcReport, deleteQcReport,
             pendingPO, setPendingPO,
             isSupabaseConnected,
             connectSupabase: SupabaseService.setCredentials

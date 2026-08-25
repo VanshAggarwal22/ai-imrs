@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, TrendingUp, FileText, Users, Package,
-    ShieldCheck, UserCircle, Settings, HelpCircle, Zap
+    ShieldCheck, UserCircle, Settings, HelpCircle, Zap, ClipboardList
 } from 'lucide-react';
 
 const navItems = [
@@ -23,8 +23,10 @@ const navItems = [
     {
         section: 'Operations',
         items: [
+            { path: '/rfqs', label: 'RFQ Tracker', icon: ClipboardList, badge: 'NEW' },
             { path: '/inventory', label: 'Inventory & MRP', icon: Package, badge: 2 },
             { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText },
+            { path: '/vendors', label: 'Vendor Portal', icon: Users },
             { path: '/orders', label: 'Orders Management', icon: TrendingUp },
             { path: '/quality', label: 'Quality Control', icon: ShieldCheck },
         ]

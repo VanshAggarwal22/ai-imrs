@@ -10,5 +10,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.addEventListener('error', function(e) {
+        document.body.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif;"><h3>Application Crash</h3><p>' + e.message + '</p><pre>' + (e.error ? e.error.stack : '') + '</pre></div>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        document.body.innerHTML = '<div style="color:red;padding:20px;font-family:sans-serif;"><h3>Unhandled Promise Rejection</h3><p>' + e.reason + '</p></div>';
+      });
+    </script>
   </body>
 </html>

@@ -17,7 +17,7 @@ export const SupabaseService = {
     async fetchAllData() {
         if (!supabase) return null;
         try {
-            const [leads, inventory, vendors, quality, products, orders, pos] = await Promise.all([
+            const [leads, inventory, vendors, quality, products, orders, pos, rfqs, priceHistory, qcReports] = await Promise.all([
                 supabase.from('leads').select('*'),
                 supabase.from('inventory').select('*'),
                 supabase.from('vendors').select('*'),
@@ -34,7 +34,10 @@ export const SupabaseService = {
                         return { data: [] }; // Gracefully handle if tables aren't created yet
                     }
                     return res;
-                })
+                }),
+                supabase.from('rfqs').select('*').then(res => { if (res.error && res.error.message.includes('public.rfqs')) { return { data: [] }; } return res; }),
+                supabase.from('material_price_history').select('*').order('recorded_date', { ascending: false }).then(res => { if (res.error && res.error.message.includes('public.material_price_history')) { return { data: [] }; } return res; }),
+                supabase.from('qc_reports').select('*').order('date', { ascending: false }).then(res => { if (res.error && res.error.message.includes('public.qc_reports')) { return { data: [] }; } return res; })
             ]);
 
             return {
@@ -44,7 +47,10 @@ export const SupabaseService = {
                 quality: quality.data || [],
                 products: products.data || [],
                 orders: orders.data || [],
-                purchaseOrders: pos.data || []
+                purchaseOrders: pos.data || [],
+                rfqs: rfqs.data || [],
+                priceHistory: priceHistory.data || [],
+                qcReports: qcReports.data || []
             };
         } catch (e) {
             console.error("Fetch Error:", e);
@@ -224,7 +230,10 @@ export const SupabaseService = {
             due_date: order.dueDate,
             material: order.material,
             wire_gauge: order.wireGauge,
-            stages: order.stages
+            stages: order.stages,
+            source: order.source,
+            source_ref: order.sourceRef,
+            rfq_id: order.rfqId
         };
         const { error } = await supabase.from('orders').insert(mapped);
         if (error) console.error("Error inserting order:", error);
@@ -243,7 +252,10 @@ export const SupabaseService = {
             due_date: order.dueDate,
             material: order.material,
             wire_gauge: order.wireGauge,
-            stages: order.stages
+            stages: order.stages,
+            source: order.source,
+            source_ref: order.sourceRef,
+            rfq_id: order.rfqId
         };
         const { error } = await supabase.from('orders').update(mapped).eq('id', order.id);
         if (error) console.error("Error updating order:", error);
@@ -292,5 +304,90 @@ export const SupabaseService = {
     async deletePO(id) {
         if (!supabase) return;
         await supabase.from('purchase_orders').delete().eq('id', id);
+    },
+
+    // ---- RFQS SYNC ----
+    async insertRFQ(rfq) {
+        if (!supabase) return;
+        const mapped = {
+            id: rfq.id,
+            source: rfq.source,
+            source_ref: rfq.sourceRef,
+            customer: rfq.customer,
+            items: rfq.items,
+            quoted_amount: rfq.quotedAmount,
+            status: rfq.status,
+            received_date: rfq.receivedDate,
+            deadline: rfq.deadline,
+            quoted_date: rfq.quotedDate,
+            notes: rfq.notes,
+            converted_order_id: rfq.convertedOrderId
+        };
+        const { error } = await supabase.from('rfqs').insert(mapped);
+        if (error) console.error('Error inserting RFQ:', error);
+    },
+    async updateRFQ(rfq) {
+        if (!supabase) return;
+        const mapped = {
+            source: rfq.source,
+            source_ref: rfq.sourceRef,
+            customer: rfq.customer,
+            items: rfq.items,
+            quoted_amount: rfq.quotedAmount,
+            status: rfq.status,
+            received_date: rfq.receivedDate,
+            deadline: rfq.deadline,
+            quoted_date: rfq.quotedDate,
+            notes: rfq.notes,
+            converted_order_id: rfq.convertedOrderId
+        };
+        const { error } = await supabase.from('rfqs').update(mapped).eq('id', rfq.id);
+        if (error) console.error('Error updating RFQ:', error);
+    },
+    async deleteRFQ(id) {
+        if (!supabase) return;
+        await supabase.from('rfqs').delete().eq('id', id);
+    },
+
+    // ---- MATERIAL PRICE HISTORY ----
+    async insertPriceEntry(entry) {
+        if (!supabase) return;
+        const mapped = {
+            id: entry.id,
+            material: entry.material,
+            wire_gauge: entry.wireGauge,
+            price_per_kg: entry.pricePerKg,
+            supplier: entry.supplier,
+            recorded_date: entry.recordedDate,
+            notes: entry.notes
+        };
+        const { error } = await supabase.from('material_price_history').insert(mapped);
+        if (error) console.error('Error inserting price entry:', error);
+    },
+    async deletePriceEntry(id) {
+        if (!supabase) return;
+        await supabase.from('material_price_history').delete().eq('id', id);
+    },
+
+    // ---- QC REPORTS ----
+    async insertQcReport(report) {
+        if (!supabase) return;
+        const mapped = {
+            id: report.id,
+            order_id: report.orderId,
+            date: report.date,
+            inspector: report.inspector,
+            inspected_qty: report.inspectedQty,
+            passed_qty: report.passedQty,
+            rejected_qty: report.rejectedQty,
+            defect_types: report.defectTypes,
+            notes: report.notes
+        };
+        const { error } = await supabase.from('qc_reports').insert(mapped);
+        if (error) console.error('Error inserting QC report:', error);
+    },
+    async deleteQcReport(id) {
+        if (!supabase) return;
+        await supabase.from('qc_reports').delete().eq('id', id);
     }
 };
