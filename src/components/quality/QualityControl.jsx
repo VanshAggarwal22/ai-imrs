@@ -320,7 +320,7 @@ export default function QualityControl() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
                         <div className="form-group">
                             <label className="form-label">Order ID</label>
-                            <input className="form-input" placeholder="ORD-2026-XXX" value={newInspection.orderId} onChange={e => setNewInspection(p => ({ ...p, orderId: e.target.value }))} />
+                            <input className="form-input" placeholder="ORD-YYYY-123" value={newInspection.orderId} onChange={e => setNewInspection(p => ({ ...p, orderId: e.target.value }))} />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Batch No.</label>
