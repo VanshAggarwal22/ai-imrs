@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Phone, Mail, Calendar, ExternalLink, X, Trash2 } from 'lucide-react';
 import { pipelineStages } from '../../data/mockData';
 import { useData } from '../../context/DataContext';
@@ -35,6 +35,24 @@ export default function SalesPipeline() {
     });
 
     const totalPipeline = allLeads.reduce((sum, l) => sum + l.value, 0);
+
+    const { leadsByStage, stageValues } = useMemo(() => {
+        const leads = {};
+        const values = {};
+        pipelineStages.forEach(stage => {
+            leads[stage] = [];
+            values[stage] = 0;
+        });
+
+        allLeads.forEach(lead => {
+            if (leads[lead.stage]) {
+                leads[lead.stage].push(lead);
+                values[lead.stage] += lead.value;
+            }
+        });
+
+        return { leadsByStage: leads, stageValues: values };
+    }, [allLeads]);
 
     const handleAddLead = (e) => {
         e.preventDefault();
@@ -136,8 +154,8 @@ export default function SalesPipeline() {
             {/* Kanban Board */}
             <div className="kanban-board">
                 {pipelineStages.map(stage => {
-                    const stageLeads = allLeads.filter(l => l.stage === stage);
-                    const stageValue = stageLeads.reduce((sum, l) => sum + l.value, 0);
+                    const stageLeads = leadsByStage[stage] || [];
+                    const stageValue = stageValues[stage] || 0;
                     return (
                         <div
                             className="kanban-column"
