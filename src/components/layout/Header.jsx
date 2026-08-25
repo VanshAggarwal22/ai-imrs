@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { Search, Bell, Sun } from 'lucide-react';
+import { Search, Bell } from 'lucide-react';
 
 const pageTitles = {
     '/': 'Executive Dashboard',
