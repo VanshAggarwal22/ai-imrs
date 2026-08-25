@@ -40,10 +40,18 @@ import { Plus, Download } from 'lucide-react';
 
 export default function MarketingROI() {
     const { showToast } = useToast();
-    const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
-    const totalRevenue = campaigns.reduce((s, c) => s + c.revenue, 0);
-    const totalLeads = campaigns.reduce((s, c) => s + c.leadsGenerated, 0);
-    const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
+
+    const { totalSpend, totalRevenue, totalLeads, totalConversions } = campaigns.reduce(
+        (acc, c) => {
+            acc.totalSpend += c.spend;
+            acc.totalRevenue += c.revenue;
+            acc.totalLeads += c.leadsGenerated;
+            acc.totalConversions += c.conversions;
+            return acc;
+        },
+        { totalSpend: 0, totalRevenue: 0, totalLeads: 0, totalConversions: 0 }
+    );
+
     const overallROI = ((totalRevenue - totalSpend) / totalSpend * 100).toFixed(0);
 
     const kpis = [
