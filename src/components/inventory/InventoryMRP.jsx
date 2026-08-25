@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Package, AlertTriangle, ScanBarcode, FileDown, Plus,
@@ -206,8 +206,13 @@ export default function InventoryMRP() {
         navigate('/purchase-orders');
     };
 
-    const totalRawStock = inventoryItems.reduce((s, i) => s + (parseFloat(i.qtyKg) || 0), 0);
-    const totalProducts = products.reduce((s, p) => s + (parseInt(p.stockQty) || 0), 0);
+    const totalRawStock = useMemo(() => {
+        return inventoryItems.reduce((s, i) => s + (parseFloat(i.qtyKg) || 0), 0);
+    }, [inventoryItems]);
+
+    const totalProducts = useMemo(() => {
+        return products.reduce((s, p) => s + (parseInt(p.stockQty) || 0), 0);
+    }, [products]);
 
     return (
         <div className="page-content">
