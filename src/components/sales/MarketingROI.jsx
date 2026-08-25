@@ -19,11 +19,23 @@ const channelData = campaigns.map(c => ({
     cac: (c.spend / c.conversions).toFixed(0),
 }));
 
+const funnelCounts = leads.reduce((acc, l) => {
+    const stage = l.stage;
+    if (stage === 'Approved' || stage === 'In Production') {
+        acc.specs++; acc.quoted++; acc.won++;
+    } else if (stage === 'Quoted' || stage === 'Sample Sent') {
+        acc.specs++; acc.quoted++;
+    } else if (stage === 'Specs Received') {
+        acc.specs++;
+    }
+    return acc;
+}, { specs: 0, quoted: 0, won: 0 });
+
 const conversionFunnel = [
     { stage: 'Leads', value: leads.length },
-    { stage: 'Specs', value: leads.filter(l => ['Specs Received', 'Quoted', 'Sample Sent', 'Approved', 'In Production'].includes(l.stage)).length },
-    { stage: 'Quoted', value: leads.filter(l => ['Quoted', 'Sample Sent', 'Approved', 'In Production'].includes(l.stage)).length },
-    { stage: 'Won', value: leads.filter(l => ['Approved', 'In Production'].includes(l.stage)).length },
+    { stage: 'Specs', value: funnelCounts.specs },
+    { stage: 'Quoted', value: funnelCounts.quoted },
+    { stage: 'Won', value: funnelCounts.won },
 ];
 
 const monthlyLeads = [
