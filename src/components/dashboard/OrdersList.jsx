@@ -1,24 +1,93 @@
 import { useState, useContext } from 'react';
-import { ChevronRight, CheckCircle2, Package, Zap, LayoutGrid, KanbanSquare, FileText } from 'lucide-react';
+import { ChevronRight, CheckCircle2, Package, Zap, LayoutGrid, KanbanSquare, FileText, Plus, X } from 'lucide-react';
 import { DataContext } from '../../context/DataContext';
 import { useToast } from '../../context/ToastContext';
 import InvoiceModal from './InvoiceModal';
 
 export default function OrdersList() {
-    const { orders, updateOrder } = useContext(DataContext);
+    const { orders, addOrder, updateOrder } = useContext(DataContext);
     const { showToast } = useToast();
     const [filter, setFilter] = useState('active');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [showInvoice, setShowInvoice] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'kanban'
+
+    // New Order Form State
+    const [newOrder, setNewOrder] = useState({
+        customer: '',
+        product: '',
+        qty: 1000,
+        unitPrice: 25,
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        material: 'Spring Steel Gr. 2',
+        wireGauge: '2.0mm',
+        source: 'Direct'
+    });
 
     const sourceColors = {
         'GeM': '#10b981',
         'IndiaMART': '#3b82f6',
         'Direct': '#64748b',
         'Email': '#a855f7'
+    };
+
+    const handleCreateOrder = async (e) => {
+        e.preventDefault();
+        if (!newOrder.customer || !newOrder.product) {
+            showToast('Please enter customer and product name', 'error');
+            return;
+        }
+
+        const qty = parseInt(newOrder.qty) || 1000;
+        const unitPrice = parseFloat(newOrder.unitPrice) || 0;
+        const total = qty * unitPrice;
+
+        const defaultStages = [
+            { name: 'Coiling', status: 'In Progress' },
+            { name: 'Heat Treatment', status: 'Pending' },
+            { name: 'QC', status: 'Pending' },
+            { name: 'Dispatch', status: 'Pending' }
+        ];
+
+        const orderObj = {
+            id: 'ORD-' + new Date().getFullYear() + '-' + Math.floor(100 + Math.random() * 900),
+            customer: newOrder.customer,
+            product: newOrder.product,
+            qty,
+            unitPrice,
+            total,
+            status: 'Coiling',
+            progress: 25,
+            orderDate: new Date().toISOString().split('T')[0],
+            dueDate: newOrder.dueDate,
+            material: newOrder.material,
+            wireGauge: newOrder.wireGauge,
+            stages: defaultStages,
+            source: newOrder.source,
+            sourceRef: null,
+            rfqId: null
+        };
+
+        try {
+            await addOrder(orderObj);
+            showToast('✅ Order created successfully!', 'success');
+            setShowAddModal(false);
+            setNewOrder({
+                customer: '',
+                product: '',
+                qty: 1000,
+                unitPrice: 25,
+                dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                material: 'Spring Steel Gr. 2',
+                wireGauge: '2.0mm',
+                source: 'Direct'
+            });
+        } catch (err) {
+            showToast('❌ Failed to create order', 'error');
+        }
     };
 
     const activeOrders = orders.filter(o => o.status !== 'Completed');
@@ -85,6 +154,9 @@ export default function OrdersList() {
                     <h1>Orders Management</h1>
                     <p>Track manufacturing progress and order status</p>
                 </div>
+                <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Plus size={18} /> New Order
+                </button>
             </div>
 
             {/* Filter Tabs */}
@@ -269,9 +341,13 @@ export default function OrdersList() {
                     </div>
 
                     {filteredOrders.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                            <Package size={40} style={{ marginBottom: '12px', opacity: 0.5 }} />
-                            <p>No {filter} orders</p>
+                        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: '12px', border: '1px dashed var(--border-color)' }}>
+                            <Package size={48} style={{ marginBottom: '16px', opacity: 0.4 }} />
+                            <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)' }}>No {filter === 'active' ? 'Active' : 'Completed'} Orders Found</h3>
+                            <p style={{ margin: '0 0 20px', fontSize: '14px' }}>Create a new manufacturing order to track shopfloor production across coiling, heat treatment, QC, and dispatch.</p>
+                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                <Plus size={16} /> Create New Order
+                            </button>
                         </div>
                     )}
                 </>
@@ -498,6 +574,118 @@ export default function OrdersList() {
 
             {showInvoice && selectedOrder && (
                 <InvoiceModal order={selectedOrder} onClose={() => setShowInvoice(false)} />
+            )}
+
+            {/* Create Order Modal */}
+            {showAddModal && (
+                <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+                        <div className="modal-header">
+                            <h2>Create New Manufacturing Order</h2>
+                            <button className="close-btn" onClick={() => setShowAddModal(false)}>×</button>
+                        </div>
+                        <form onSubmit={handleCreateOrder}>
+                            <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Customer / Company Name</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="text" 
+                                        placeholder="e.g. Tata Motors Ltd" 
+                                        value={newOrder.customer} 
+                                        onChange={e => setNewOrder({ ...newOrder, customer: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Product Name / Specification</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="text" 
+                                        placeholder="e.g. Heavy Duty Engine Valve Springs" 
+                                        value={newOrder.product} 
+                                        onChange={e => setNewOrder({ ...newOrder, product: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Order Quantity (Units)</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="number" 
+                                        min="1" 
+                                        value={newOrder.qty} 
+                                        onChange={e => setNewOrder({ ...newOrder, qty: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Unit Price (₹)</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="number" 
+                                        min="0" 
+                                        step="0.01" 
+                                        value={newOrder.unitPrice} 
+                                        onChange={e => setNewOrder({ ...newOrder, unitPrice: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Material Grade</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={newOrder.material} 
+                                        onChange={e => setNewOrder({ ...newOrder, material: e.target.value })}
+                                    >
+                                        <option value="Spring Steel Gr. 2">Spring Steel Gr. 2</option>
+                                        <option value="SS 304">SS 304</option>
+                                        <option value="SS 316">SS 316</option>
+                                        <option value="Inconel X-750">Inconel X-750</option>
+                                        <option value="High Carbon Steel">High Carbon Steel</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Wire Gauge / Thickness</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="text" 
+                                        placeholder="e.g. 2.5mm" 
+                                        value={newOrder.wireGauge} 
+                                        onChange={e => setNewOrder({ ...newOrder, wireGauge: e.target.value })} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Due Date</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="date" 
+                                        value={newOrder.dueDate} 
+                                        onChange={e => setNewOrder({ ...newOrder, dueDate: e.target.value })} 
+                                        required 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Order Source</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={newOrder.source} 
+                                        onChange={e => setNewOrder({ ...newOrder, source: e.target.value })}
+                                    >
+                                        <option value="Direct">Direct</option>
+                                        <option value="GeM">GeM Portal</option>
+                                        <option value="IndiaMART">IndiaMART</option>
+                                        <option value="Email">Email</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 20px' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Create Order</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
 
             <style>{`

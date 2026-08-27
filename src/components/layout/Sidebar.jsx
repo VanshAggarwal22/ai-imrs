@@ -3,43 +3,50 @@ import {
     LayoutDashboard, TrendingUp, FileText, Users, Package,
     ShieldCheck, UserCircle, Settings, HelpCircle, Zap, ClipboardList
 } from 'lucide-react';
-
-const navItems = [
-    {
-        section: 'Overview',
-        items: [
-            { path: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
-        ]
-    },
-    {
-        section: 'Sales & Marketing',
-        items: [
-            { path: '/ai-sales', label: 'AI Lead Automation', icon: Zap, badge: 'NEW' },
-            { path: '/sales', label: 'CRM Pipeline', icon: TrendingUp, badge: 3 },
-            { path: '/quoting', label: 'Quoting Engine', icon: FileText },
-            { path: '/marketing', label: 'Marketing ROI', icon: Zap },
-        ]
-    },
-    {
-        section: 'Operations',
-        items: [
-            { path: '/rfqs', label: 'RFQ Tracker', icon: ClipboardList, badge: 'NEW' },
-            { path: '/inventory', label: 'Inventory & MRP', icon: Package, badge: 2 },
-            { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText },
-            { path: '/vendors', label: 'Vendor Portal', icon: Users },
-            { path: '/orders', label: 'Orders Management', icon: TrendingUp },
-            { path: '/quality', label: 'Quality Control', icon: ShieldCheck },
-        ]
-    },
-    {
-        section: 'Portal',
-        items: [
-            { path: '/portal', label: 'Customer Portal', icon: UserCircle },
-        ]
-    }
-];
+import { useData } from '../../context/DataContext';
 
 export default function Sidebar() {
+    const { allLeads, inventoryItems, orders, rfqs } = useData();
+
+    const activeLeadCount = allLeads?.length || 0;
+    const criticalInventoryCount = inventoryItems?.filter(i => i.status === 'Critical' || (Number(i.qtyKg) || 0) < (Number(i.minQtyKg) || 0)).length || 0;
+    const activeOrderCount = orders?.filter(o => o.status !== 'Completed').length || 0;
+    const pendingRfqCount = rfqs?.filter(r => r.status === 'received').length || 0;
+
+    const navItems = [
+        {
+            section: 'Overview',
+            items: [
+                { path: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
+            ]
+        },
+        {
+            section: 'Sales & Marketing',
+            items: [
+                { path: '/ai-sales', label: 'AI Lead Automation', icon: Zap, badge: 'NEW' },
+                { path: '/sales', label: 'CRM Pipeline', icon: TrendingUp, badge: activeLeadCount > 0 ? activeLeadCount : null },
+                { path: '/quoting', label: 'Quoting Engine', icon: FileText },
+                { path: '/marketing', label: 'Marketing ROI', icon: Zap },
+            ]
+        },
+        {
+            section: 'Operations',
+            items: [
+                { path: '/rfqs', label: 'RFQ Tracker', icon: ClipboardList, badge: pendingRfqCount > 0 ? pendingRfqCount : null },
+                { path: '/inventory', label: 'Inventory & MRP', icon: Package, badge: criticalInventoryCount > 0 ? criticalInventoryCount : null },
+                { path: '/purchase-orders', label: 'Purchase Orders', icon: FileText },
+                { path: '/vendors', label: 'Vendor Portal', icon: Users },
+                { path: '/orders', label: 'Orders Management', icon: TrendingUp, badge: activeOrderCount > 0 ? activeOrderCount : null },
+                { path: '/quality', label: 'Quality Control', icon: ShieldCheck },
+            ]
+        },
+        {
+            section: 'Portal',
+            items: [
+                { path: '/portal', label: 'Customer Portal', icon: UserCircle },
+            ]
+        }
+    ];
     return (
         <aside className="sidebar">
             <div className="sidebar-header">

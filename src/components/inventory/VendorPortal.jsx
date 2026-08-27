@@ -88,26 +88,38 @@ export default function VendorPortal() {
             </div>
 
             {activeTab === 'directory' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-                    {vendors.map(vendor => (
-                        <div key={vendor.id} className="card animate-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                <div>
-                                    <h3 style={{ margin: '0', fontSize: '16px' }}>{vendor.name}</h3>
-                                    <span className="badge blue" style={{ marginTop: '4px', display: 'inline-block' }}>{vendor.type.toUpperCase()}</span>
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                        {vendors.map(vendor => (
+                            <div key={vendor.id} className="card animate-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                    <div>
+                                        <h3 style={{ margin: '0', fontSize: '16px' }}>{vendor.name}</h3>
+                                        <span className="badge blue" style={{ marginTop: '4px', display: 'inline-block' }}>{vendor.type ? vendor.type.toUpperCase() : 'SUPPLIER'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-orange)' }}>
+                                        <Star size={14} fill="currentColor" /> {vendor.rating || 5}/5
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-orange)' }}>
-                                    <Star size={14} fill="currentColor" /> {vendor.rating}/5
+                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><MapPin size={14} color="var(--text-muted)" /> {vendor.location || 'Location not specified'}</div>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><strong>Terms:</strong> {vendor.paymentTerms || 'Net 30'}</div>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><strong>Lead Time:</strong> {vendor.leadTime || '7-10 Days'}</div>
                                 </div>
                             </div>
-                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><MapPin size={14} color="var(--text-muted)" /> {vendor.location}</div>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><strong>Terms:</strong> {vendor.paymentTerms}</div>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><strong>Lead Time:</strong> {vendor.leadTime}</div>
-                            </div>
+                        ))}
+                    </div>
+                    {vendors.length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: '12px', border: '1px dashed var(--border-color)', marginTop: '16px' }}>
+                            <Users size={48} style={{ marginBottom: '16px', opacity: 0.4 }} />
+                            <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)' }}>No Vendors Registered Yet</h3>
+                            <p style={{ margin: '0 0 20px', fontSize: '14px' }}>Add procurement partners, wire mills, and plating vendors to track contracts and pricing.</p>
+                            <button className="btn btn-primary" onClick={() => setShowVendorModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                <Users size={16} /> Add First Vendor
+                            </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                </>
             )}
 
             {activeTab === 'pricing' && (

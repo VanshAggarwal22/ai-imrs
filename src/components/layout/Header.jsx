@@ -9,6 +9,8 @@ const pageTitles = {
     '/marketing': 'Marketing ROI',
     '/inventory': 'Inventory & MRP',
     '/purchase-orders': 'Purchase Orders',
+    '/rfqs': 'RFQ Tracker',
+    '/vendors': 'Vendor & Supplier Portal',
     '/orders': 'Orders Management',
     '/quality': 'Quality Control',
     '/portal': 'Customer Portal',
