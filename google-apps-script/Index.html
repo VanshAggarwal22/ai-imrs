@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aggarwal Industries - AI IMRS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    [v-cloak] { display: none; }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background-color: white; margin: 0; padding: 0; }
+      .print-container { width: 100%; max-width: 100%; margin: 0; padding: 20px; box-sizing: border-box; }
+    }
+    .print-only { display: none; }
+    .kanban-col { min-width: 300px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div id="app" class="flex h-screen overflow-hidden">
+    
+    <!-- Loading Overlay -->
+    <div v-if="loading" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 flex items-center justify-center no-print">
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print">
+      <div v-for="toast in toasts" :key="toast.id" 
+           :class="{'bg-emerald-600': toast.type === 'success', 'bg-red-600': toast.type === 'error', 'bg-blue-600': toast.type === 'info'}"
+           class="text-white px-4 py-2 rounded-lg shadow-lg text-sm transition-all transform duration-300">
+        {{ toast.message }}
+      </div>
+    </div>
+
+    <!-- Left Sidebar -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
+           class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-300 transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col no-print">
+      
+      <!-- Brand / Logo -->
+      <div class="h-16 flex items-center justify-between px-6 bg-slate-950 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-sm">
+            AI
+          </div>
+          <div>
+            <h1 class="font-bold text-sm text-white tracking-wide">Aggarwal Industries</h1>
+            <p class="text-[10px] text-slate-400 font-mono">IMRS v3.5</p>
+          </div>
+        </div>
+        <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <button v-for="tab in tabs" :key="tab.id"
+                @click="currentTab = tab.id; sidebarOpen = false; onTabChange(tab.id)"
+                :class="{'bg-blue-600 text-white hover:bg-blue-700': currentTab === tab.id}"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+          <span class="text-base">{{ tab.icon }}</span>
+          <span>{{ tab.name }}</span>
+        </button>
+      </nav>
+
+      <!-- User / Footer Info -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center gap-3">
+        <div class="h-9 w-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-xs text-white">
+          VS
+        </div>
+        <div class="overflow-hidden">
+          <p class="text-xs font-semibold text-white truncate">Vansh Aggarwal</p>
+          <p class="text-[10px] text-slate-400 truncate">Google Sheets ERP</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      
+      <!-- Top Header -->
+      <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 z-10 no-print">
+        <div class="flex items-center gap-4">
+          <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden text-slate-600 hover:text-slate-900 focus:outline-none">
+            ☰
+          </button>
+          <h1 class="text-xl font-bold text-slate-800">{{ currentTabName }}</h1>
+        </div>
+        <div class="flex items-center gap-3 text-sm font-medium">
+          <button @click="handleClearAllData" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            🗑️ Clear Sheet Data
+          </button>
+          <button @click="handleSeedSampleData" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            🔄 Load Demo Data
+          </button>
+          <span class="text-slate-300 hidden sm:inline">|</span>
+          <span class="text-slate-500 hidden sm:inline">{{ currentDate }}</span>
+          <div class="h-8 w-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-sm">
+            AI
+          </div>
+        </div>
+      </header>
+
+      <!-- Scrollable Content Area -->
+      <main class="flex-1 overflow-y-auto p-4 lg:p-8 relative">
+
+        <!-- ==================== DASHBOARD ==================== -->
+        <div v-show="currentTab === 'dashboard'" class="space-y-6">
+          <!-- KPIs -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Pipeline Value</p>
+              <p class="text-2xl font-bold text-slate-800 mt-1">{{ formatCurrency(kpis.pipelineValue) }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Active Orders</p>
+              <p class="text-2xl font-bold text-slate-800 mt-1">{{ kpis.activeOrders }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Critical Inventory</p>
+              <p class="text-2xl font-bold text-red-600 mt-1">{{ kpis.criticalInventory }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">RFQ Win Rate</p>
+              <p class="text-2xl font-bold text-emerald-600 mt-1">{{ kpis.rfqWinRate }}%</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Monthly Revenue</p>
+              <p class="text-2xl font-bold text-slate-800 mt-1">{{ formatCurrency(kpis.monthlyRevenue) }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Pending Dispatches</p>
+              <p class="text-2xl font-bold text-amber-600 mt-1">{{ kpis.pendingDispatches }}</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">QC Pass Rate</p>
+              <p class="text-2xl font-bold text-emerald-600 mt-1">{{ kpis.qcPassRate }}%</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-sm font-medium text-slate-500">Active Leads</p>
+              <p class="text-2xl font-bold text-blue-600 mt-1">{{ kpis.activeLeads }}</p>
+            </div>
+          </div>
+
+          <!-- Charts -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 class="font-bold text-slate-800 mb-4">Revenue (Last 6 Months)</h3>
+              <div class="h-64 relative w-full">
+                <canvas id="revenueChart"></canvas>
+              </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 class="font-bold text-slate-800 mb-4">Orders by Source</h3>
+              <div class="h-64 relative w-full flex justify-center">
+                <canvas id="sourceChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lists -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div class="p-4 border-b border-slate-200 bg-slate-50 font-bold text-slate-800">Active Orders</div>
+              <div class="p-0 overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                  <thead class="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th class="px-4 py-3">ID</th>
+                      <th class="px-4 py-3">Customer</th>
+                      <th class="px-4 py-3">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="order in activeOrdersList" :key="order.id" class="border-b">
+                      <td class="px-4 py-3 font-medium">{{ order.id }}</td>
+                      <td class="px-4 py-3">{{ order.customer }}</td>
+                      <td class="px-4 py-3">
+                        <div class="w-full bg-slate-200 rounded-full h-2.5">
+                          <div class="bg-blue-600 h-2.5 rounded-full" :style="{width: getOrderProgress(order.status) + '%'}"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 mt-1 block">{{ order.status }}</span>
+                      </td>
+                    </tr>
+                    <tr v-if="activeOrdersList.length === 0">
+                      <td colspan="3" class="px-4 py-8 text-center text-slate-500">No active orders</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div class="p-4 border-b border-slate-200 bg-slate-50 font-bold text-red-600">MRP Alerts (Critical Inventory)</div>
+              <div class="p-4 space-y-3">
+                <div v-for="item in mrpAlerts" :key="item.id" class="p-3 border border-red-200 bg-red-50 rounded-lg flex justify-between items-center">
+                  <div>
+                    <h4 class="font-bold text-red-800">{{ item.material }}</h4>
+                    <p class="text-xs text-red-600">Stock: {{ item.stock }} {{ item.uom }} | Min: {{ item.minStock }} {{ item.uom }}</p>
+                  </div>
+                  <button @click="currentTab='purchaseOrders'; openNewPO(item)" class="px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700">
+                    Gen PO
+                  </button>
+                </div>
+                <div v-if="mrpAlerts.length === 0" class="text-center py-8 text-slate-500">
+                  Inventory levels healthy.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== SALES PIPELINE ==================== -->
+        <div v-show="currentTab === 'pipeline'" class="h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex gap-4">
+              <input type="text" v-model="pipelineSearch" placeholder="Search leads..." class="px-3 py-2 border rounded-md text-sm w-64">
+              <select v-model="pipelineSourceFilter" class="px-3 py-2 border rounded-md text-sm">
+                <option value="">All Sources</option>
+                <option v-for="src in sources" :value="src">{{src}}</option>
+              </select>
+            </div>
+            <button @click="openLeadModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 flex items-center gap-2">
+              <span>+</span> New Lead
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-x-auto flex gap-4 pb-4">
+            <!-- Kanban Columns -->
+            <div v-for="stage in pipelineStages" :key="stage" class="kanban-col bg-slate-100 rounded-lg flex flex-col h-full">
+              <div class="p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
+                <span>{{ stage }}</span>
+                <span class="text-xs bg-slate-200 px-2 py-1 rounded-full">{{ getLeadsByStage(stage).length }}</span>
+              </div>
+              <div class="p-2 flex-1 overflow-y-auto space-y-2">
+                <div v-for="lead in getLeadsByStage(stage)" :key="lead.id" 
+                     @click="openLeadModal(lead)"
+                     class="bg-white p-3 rounded shadow-sm border border-slate-200 cursor-pointer hover:shadow-md transition-shadow relative group">
+                  <div class="font-bold text-slate-800 text-sm mb-1">{{ lead.company }}</div>
+                  <div class="text-xs text-slate-600 mb-2 truncate">{{ lead.product }}</div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-xs font-medium text-emerald-600">{{ formatCurrency(lead.value) }}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full" :class="getSourceBadgeClass(lead.source)">{{ lead.source }}</span>
+                  </div>
+                  <!-- Move Stage Buttons (Visible on hover) -->
+                  <div class="absolute inset-0 bg-white bg-opacity-95 hidden group-hover:flex items-center justify-center gap-2 rounded transition-all">
+                     <button v-if="getStageIndex(stage) > 0" @click.stop="moveLead(lead, -1)" class="p-1 bg-slate-200 rounded hover:bg-slate-300">←</button>
+                     <button @click.stop="openLeadModal(lead)" class="px-3 py-1 bg-blue-600 text-white text-xs rounded">View</button>
+                     <button v-if="getStageIndex(stage) < pipelineStages.length - 1" @click.stop="moveLead(lead, 1)" class="p-1 bg-slate-200 rounded hover:bg-slate-300">→</button>
+                  </div>
+                </div>
+              </div>
+              <div class="p-3 border-t border-slate-200 text-right text-sm font-bold text-slate-600">
+                {{ formatCurrency(getStageTotalValue(stage)) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== QUOTING ENGINE ==================== -->
+        <div v-show="currentTab === 'quoting'" class="space-y-6">
+          
+          <!-- Sub-tabs -->
+          <div class="flex border-b border-slate-200">
+            <button @click="quoteSubTab = 'spring'" class="px-6 py-3 font-medium text-sm transition-colors" :class="quoteSubTab === 'spring' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Spring Calculator</button>
+            <button @click="quoteSubTab = 'washer'" class="px-6 py-3 font-medium text-sm transition-colors" :class="quoteSubTab === 'washer' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Washer Calculator</button>
+            <button @click="quoteSubTab = 'washerSource'" class="px-6 py-3 font-medium text-sm transition-colors" :class="quoteSubTab === 'washerSource' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Washer Sourcing</button>
+          </div>
+
+          <!-- Spring Calculator -->
+          <div v-show="quoteSubTab === 'spring'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 class="font-bold text-lg mb-4 border-b pb-2">Spring Parameters</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Customer Name</label>
+                  <input type="text" v-model="calcSpring.customerName" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                  <select v-model="calcSpring.type" class="w-full px-3 py-2 border rounded text-sm">
+                    <option>Compression</option>
+                    <option>Extension</option>
+                    <option>Torsion</option>
+                    <option>Wave</option>
+                    <option>Disc</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Wire Dia (mm)</label>
+                  <input type="number" v-model.number="calcSpring.wireDia" step="0.1" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Outer Dia (mm)</label>
+                  <input type="number" v-model.number="calcSpring.outerDia" step="0.1" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Free Length (mm)</label>
+                  <input type="number" v-model.number="calcSpring.freeLength" step="1" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Total Coils</label>
+                  <input type="number" v-model.number="calcSpring.totalCoils" step="0.5" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Material</label>
+                  <select v-model="calcSpring.material" class="w-full px-3 py-2 border rounded text-sm">
+                    <option v-for="mat in staticData.materials" :value="mat">{{mat}}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Surface Finish</label>
+                  <select v-model="calcSpring.surfaceFinish" class="w-full px-3 py-2 border rounded text-sm">
+                    <option>None</option>
+                    <option>Zinc Plating</option>
+                    <option>Black Oxide</option>
+                    <option>Powder Coating</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-500 mb-1">Quantity</label>
+                  <input type="number" v-model.number="calcSpring.quantity" step="1" class="w-full px-3 py-2 border rounded text-sm">
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-slate-800 text-white p-5 rounded-xl shadow-sm flex flex-col">
+              <h3 class="font-bold text-lg mb-4 border-b border-slate-600 pb-2">Quote Breakdown</h3>
+              <div class="space-y-3 flex-1 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Mean Dia:</span>
+                  <span>{{ springResults.meanDia.toFixed(2) }} mm</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Wire Length (per pc):</span>
+                  <span>{{ springResults.wireLengthM.toFixed(3) }} m</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Weight (per pc):</span>
+                  <span>{{ springResults.weightPerPc.toFixed(2) }} g</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t border-slate-600">
+                  <span class="text-slate-400">Total Material Weight:</span>
+                  <span>{{ springResults.totalWeightKg.toFixed(2) }} kg</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Material Cost:</span>
+                  <span>{{ formatCurrency(springResults.materialCost) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Machining Cost:</span>
+                  <span>{{ formatCurrency(springResults.machineCost) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Finishing Cost:</span>
+                  <span>{{ formatCurrency(springResults.finishCost) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Overheads (15%):</span>
+                  <span>{{ formatCurrency(springResults.overhead) }}</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t border-slate-600 font-bold text-lg">
+                  <span class="text-blue-300">Unit Price:</span>
+                  <span class="text-emerald-400">{{ formatCurrency(springResults.unitPrice) }}</span>
+                </div>
+                <div class="flex justify-between font-bold text-xl mt-2">
+                  <span class="text-white">Total Value:</span>
+                  <span class="text-emerald-400">{{ formatCurrency(springResults.total) }}</span>
+                </div>
+              </div>
+              <div class="mt-6 flex gap-3">
+                <button @click="printQuote('spring')" class="flex-1 bg-slate-600 hover:bg-slate-500 py-2 rounded font-medium transition-colors">Print Preview</button>
+                <button @click="saveQuote('spring')" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded font-medium transition-colors">Save Quote</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- A4 Quote Preview Modal Area -->
+          <div v-if="showQuotePreview" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-80 flex justify-center overflow-y-auto py-8">
+            <div class="bg-white w-[210mm] min-h-[297mm] p-10 shadow-2xl relative text-sm print-container print-only-wrapper">
+              
+              <!-- Close btn -->
+              <button @click="showQuotePreview = false" class="absolute top-4 right-4 text-slate-500 hover:text-red-500 text-2xl no-print">×</button>
+              <button @click="window.print()" class="absolute top-4 right-16 bg-blue-600 text-white px-4 py-1 rounded no-print">Print</button>
+
+              <!-- Header -->
+              <div class="text-center border-b-2 border-blue-800 pb-4 mb-6">
+                <h1 class="text-3xl font-black text-blue-900 tracking-wider">AGGARWAL SPRING INDUSTRIES</h1>
+                <p class="text-slate-600 mt-1">Precision Engineering & Manufacturing</p>
+                <p class="text-xs text-slate-500 mt-1">123 Industrial Area, Phase II, New Delhi - 110020 | ISO 9001:2015 Certified</p>
+              </div>
+
+              <!-- Meta -->
+              <div class="flex justify-between mb-8">
+                <div>
+                  <p><strong>To:</strong> {{ currentPreviewQuote.customerName || 'Customer' }}</p>
+                  <p><strong>Attn:</strong> Purchase Manager</p>
+                </div>
+                <div class="text-right">
+                  <p><strong>Quote Ref:</strong> {{ currentPreviewQuote.ref }}</p>
+                  <p><strong>Date:</strong> {{ currentDate }}</p>
+                  <p><strong>Validity:</strong> 15 Days</p>
+                </div>
+              </div>
+
+              <!-- Specs -->
+              <div class="mb-8">
+                <h3 class="font-bold bg-slate-100 p-2 mb-2">Technical Specifications</h3>
+                <div class="grid grid-cols-2 gap-x-8 gap-y-2 px-2">
+                  <template v-for="(val, key) in currentPreviewQuote.specs" :key="key">
+                    <div class="flex justify-between border-b border-slate-100 py-1">
+                      <span class="text-slate-600">{{ key }}:</span>
+                      <span class="font-medium">{{ val }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Pricing -->
+              <div class="mb-8">
+                <h3 class="font-bold bg-slate-100 p-2 mb-2">Commercial Proposal</h3>
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b-2 border-slate-300">
+                      <th class="py-2">Description</th>
+                      <th class="py-2 text-right">Qty</th>
+                      <th class="py-2 text-right">Unit Price</th>
+                      <th class="py-2 text-right">Total Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b border-slate-200">
+                      <td class="py-3">Custom {{ currentPreviewQuote.type }}</td>
+                      <td class="py-3 text-right">{{ currentPreviewQuote.qty }}</td>
+                      <td class="py-3 text-right">{{ formatCurrency(currentPreviewQuote.unitPrice) }}</td>
+                      <td class="py-3 text-right font-bold">{{ formatCurrency(currentPreviewQuote.total) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Terms -->
+              <div class="mb-8 mt-auto text-xs">
+                <h3 class="font-bold bg-slate-100 p-2 mb-2 text-sm">Terms & Conditions</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-600">
+                  <li><strong>Taxes:</strong> GST @ 18% extra as applicable.</li>
+                  <li><strong>Delivery:</strong> 2-3 weeks from date of confirmed PO and sample approval.</li>
+                  <li><strong>Payment:</strong> 100% advance against Proforma Invoice.</li>
+                  <li><strong>Freight:</strong> Extra at actuals.</li>
+                  <li><strong>Tolerances:</strong> As per IS/DIN standards unless specified.</li>
+                </ul>
+              </div>
+
+              <div class="text-right mt-16 text-xs">
+                <p>For <strong>Aggarwal Spring Industries</strong></p>
+                <div class="h-16"></div>
+                <p>Authorized Signatory</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== RFQ TRACKER ==================== -->
+        <div v-show="currentTab === 'rfqs'" class="h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex gap-2">
+              <button v-for="status in ['All', 'received', 'quoted', 'won', 'lost']" 
+                      @click="rfqFilter = status"
+                      class="px-3 py-1 rounded-full text-sm font-medium transition-colors"
+                      :class="rfqFilter === status ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'">
+                {{ status.charAt(0).toUpperCase() + status.slice(1) }}
+              </button>
+            </div>
+            <button @click="openRfqModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">
+              + New RFQ
+            </button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-sm text-left whitespace-nowrap">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">Source</th>
+                    <th class="px-4 py-3">Customer</th>
+                    <th class="px-4 py-3">Summary</th>
+                    <th class="px-4 py-3">Value</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Deadline</th>
+                    <th class="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="rfq in filteredRfqs" :key="rfq.id" class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-medium text-slate-900">{{ rfq.id }}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs" :class="getSourceBadgeClass(rfq.source)">{{ rfq.source }}</span></td>
+                    <td class="px-4 py-3">{{ rfq.customer }}</td>
+                    <td class="px-4 py-3 truncate max-w-[200px]">{{ rfq.summary }}</td>
+                    <td class="px-4 py-3 font-medium">{{ rfq.value ? formatCurrency(rfq.value) : '-' }}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-medium" :class="getStatusBadgeClass(rfq.status)">{{ rfq.status }}</span></td>
+                    <td class="px-4 py-3">
+                      <span :class="getDeadlineClass(rfq.deadline)">{{ rfq.deadline }}</span>
+                    </td>
+                    <td class="px-4 py-3 space-x-2">
+                      <button v-if="rfq.status === 'received'" @click="quoteRfq(rfq)" class="text-blue-600 hover:underline">Quote</button>
+                      <button v-if="rfq.status === 'won'" @click="convertToOrder(rfq)" class="text-emerald-600 hover:underline">Convert to Order</button>
+                      <button @click="openRfqModal(rfq)" class="text-slate-500 hover:text-slate-700">Edit</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ORDERS ==================== -->
+        <div v-show="currentTab === 'orders'" class="h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex gap-4 items-center">
+              <select v-model="orderFilter" class="px-3 py-1.5 border rounded text-sm">
+                <option value="Active">Active Orders</option>
+                <option value="Completed">Completed Orders</option>
+                <option value="All">All Orders</option>
+              </select>
+              <!-- View Toggle -->
+              <div class="flex bg-slate-200 rounded p-0.5">
+                <button @click="orderView = 'grid'" class="px-3 py-1 text-sm rounded transition-colors" :class="orderView === 'grid' ? 'bg-white shadow-sm font-medium' : 'text-slate-600'">Grid</button>
+                <button @click="orderView = 'kanban'" class="px-3 py-1 text-sm rounded transition-colors" :class="orderView === 'kanban' ? 'bg-white shadow-sm font-medium' : 'text-slate-600'">Kanban</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orders Grid View -->
+          <div v-if="orderView === 'grid'" class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
+            <div class="overflow-x-auto flex-1">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">Customer</th>
+                    <th class="px-4 py-3">Product</th>
+                    <th class="px-4 py-3">Qty</th>
+                    <th class="px-4 py-3">Total</th>
+                    <th class="px-4 py-3 w-48">Progress</th>
+                    <th class="px-4 py-3">Due Date</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-slate-50 cursor-pointer" @click="viewOrder(order)">
+                    <td class="px-4 py-3 font-medium text-slate-900">{{ order.id }}</td>
+                    <td class="px-4 py-3">{{ order.customer }}</td>
+                    <td class="px-4 py-3">{{ order.product }}</td>
+                    <td class="px-4 py-3">{{ order.qty }}</td>
+                    <td class="px-4 py-3 font-medium">{{ formatCurrency(order.total) }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-full bg-slate-200 rounded-full h-2">
+                          <div class="bg-blue-600 h-2 rounded-full" :style="{width: getOrderProgress(order.status) + '%'}"></div>
+                        </div>
+                        <span class="text-xs text-slate-500 w-16">{{ order.status }}</span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3" :class="{'text-red-600 font-medium': isOverdue(order.dueDate)}">{{ order.dueDate }}</td>
+                    <td class="px-4 py-3 text-right space-x-2" @click.stop>
+                      <button v-if="order.status !== 'Completed'" @click="progressOrder(order)" class="text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded hover:bg-blue-100">Progress</button>
+                      <button v-if="order.status === 'Completed'" @click="generateInvoice(order)" class="text-emerald-600 text-xs font-medium bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">Invoice</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Orders Kanban View -->
+          <div v-if="orderView === 'kanban'" class="flex-1 overflow-x-auto flex gap-4 pb-4">
+            <div v-for="stage in orderStages" :key="stage" class="kanban-col bg-slate-100 rounded-lg flex flex-col h-full">
+              <div class="p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
+                <span>{{ stage }}</span>
+                <span class="text-xs bg-slate-200 px-2 py-1 rounded-full">{{ orders.filter(o => o.status === stage).length }}</span>
+              </div>
+              <div class="p-2 flex-1 overflow-y-auto space-y-2">
+                <div v-for="order in orders.filter(o => o.status === stage)" :key="order.id" 
+                     @click="viewOrder(order)"
+                     class="bg-white p-3 rounded shadow-sm border border-slate-200 cursor-pointer hover:border-blue-300">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-mono text-slate-500">{{ order.id }}</span>
+                    <span class="text-xs font-medium" :class="isOverdue(order.dueDate) ? 'text-red-600' : 'text-slate-500'">{{ order.dueDate }}</span>
+                  </div>
+                  <div class="font-bold text-slate-800 text-sm">{{ order.customer }}</div>
+                  <div class="text-xs text-slate-600 mt-1">{{ order.product }} (Qty: {{ order.qty }})</div>
+                  <div class="mt-3 text-right">
+                    <button v-if="stage !== 'Completed'" @click.stop="progressOrder(order)" class="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">Move →</button>
+                    <button v-if="stage === 'Completed'" @click.stop="generateInvoice(order)" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium">Invoice</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      
+        <!-- ==================== INVENTORY & MRP ==================== -->
+        <div v-show="currentTab === 'inventory'" class="h-full flex flex-col space-y-4">
+          <div class="flex border-b border-slate-200">
+            <button @click="inventorySubTab = 'raw'" class="px-6 py-3 font-medium text-sm transition-colors" :class="inventorySubTab === 'raw' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Raw Materials</button>
+            <button @click="inventorySubTab = 'finished'" class="px-6 py-3 font-medium text-sm transition-colors" :class="inventorySubTab === 'finished' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Finished Goods</button>
+            <button @click="inventorySubTab = 'mrp'" class="px-6 py-3 font-medium text-sm transition-colors" :class="inventorySubTab === 'mrp' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">MRP Alerts</button>
+            <button @click="inventorySubTab = 'suppliers'" class="px-6 py-3 font-medium text-sm transition-colors" :class="inventorySubTab === 'suppliers' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'">Supply Partners</button>
+          </div>
+          
+          <div v-show="inventorySubTab === 'raw'" class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+             <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+               <h3 class="font-bold text-slate-800">Raw Materials</h3>
+               <button @click="modals.inventory = true" class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">+ Add Material</button>
+             </div>
+             <div class="overflow-x-auto">
+               <table class="w-full text-sm text-left">
+                 <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                   <tr>
+                     <th class="px-4 py-3">ID</th><th class="px-4 py-3">Material</th><th class="px-4 py-3">Gauge</th>
+                     <th class="px-4 py-3">Lot No</th><th class="px-4 py-3">Supplier</th><th class="px-4 py-3">Stock (kg)</th>
+                     <th class="px-4 py-3">Status</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   <tr v-for="item in inventory" :key="item.id" class="border-b">
+                     <td class="px-4 py-3">{{item.id}}</td><td class="px-4 py-3">{{item.material}}</td><td class="px-4 py-3">{{item.wireGauge}}</td>
+                     <td class="px-4 py-3">{{item.lotNumber}}</td><td class="px-4 py-3">{{item.supplier}}</td>
+                     <td class="px-4 py-3 font-medium">{{item.qtyKg}} / {{item.minQtyKg}}</td>
+                     <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs" :class="getInventoryStatusClass(item.status)">{{item.status}}</span></td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+          </div>
+          
+          <div v-show="inventorySubTab === 'finished'" class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+             <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+               <h3 class="font-bold text-slate-800">Finished Goods</h3>
+               <button @click="modals.product = true" class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">+ Add Product</button>
+             </div>
+             <div class="overflow-x-auto">
+               <table class="w-full text-sm text-left">
+                 <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                   <tr>
+                     <th class="px-4 py-3">ID</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Category</th>
+                     <th class="px-4 py-3">Stock</th><th class="px-4 py-3">Unit Cost</th><th class="px-4 py-3">Location</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   <tr v-for="item in products" :key="item.id" class="border-b">
+                     <td class="px-4 py-3">{{item.id}}</td><td class="px-4 py-3">{{item.name}}</td><td class="px-4 py-3">{{item.category}}</td>
+                     <td class="px-4 py-3 font-medium">{{item.stockQty}} {{item.uom}}</td>
+                     <td class="px-4 py-3">{{formatCurrency(item.unitCost)}}</td><td class="px-4 py-3">{{item.location}}</td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+          </div>
+
+          <div v-show="inventorySubTab === 'mrp'" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div v-for="item in mrpShortfalls" :key="item.id" class="bg-white p-4 rounded-xl border border-red-200 shadow-sm flex flex-col">
+              <h4 class="font-bold text-slate-800">{{item.material}} ({{item.wireGauge}})</h4>
+              <p class="text-sm text-slate-500 mb-4">{{item.supplier}}</p>
+              <div class="flex justify-between text-sm mb-1"><span class="text-slate-500">Current Stock:</span><span class="font-bold text-red-600">{{item.qtyKg}} kg</span></div>
+              <div class="flex justify-between text-sm mb-4"><span class="text-slate-500">Minimum Required:</span><span>{{item.minQtyKg}} kg</span></div>
+              <button @click="generatePOFromAlert(item)" class="mt-auto px-4 py-2 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700">Generate PO</button>
+            </div>
+            <div v-if="mrpShortfalls.length === 0" class="col-span-3 text-center py-8 text-slate-500">No MRP alerts. Inventory levels healthy.</div>
+          </div>
+
+          <div v-show="inventorySubTab === 'suppliers'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="vendor in vendors" :key="vendor.id" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h4 class="font-bold text-slate-800 text-lg">{{vendor.name}}</h4>
+              <p class="text-sm text-slate-500 mb-3">{{vendor.location}}</p>
+              <div class="flex gap-2 mb-4 flex-wrap">
+                <span v-for="mat in vendor.materials" class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded">{{mat}}</span>
+              </div>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-slate-500">Rating:</span><span class="text-amber-500">{{ '★★★★★'.slice(0, vendor.rating) }}</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Lead Time:</span><span>{{vendor.leadTime}}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== PURCHASE ORDERS ==================== -->
+        <div v-show="currentTab === 'purchaseOrders'" class="h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-slate-800">Purchase Orders</h2>
+            <button @click="openPOModal()" class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">+ New PO</button>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-3">PO Number</th><th class="px-4 py-3">Vendor</th><th class="px-4 py-3">Material</th>
+                    <th class="px-4 py-3">Qty</th><th class="px-4 py-3">Total</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="po in purchaseOrders" :key="po.id" class="border-b hover:bg-slate-50">
+                    <td class="px-4 py-3 font-medium">{{po.id}}</td><td class="px-4 py-3">{{po.vendorName}}</td><td class="px-4 py-3">{{po.material}}</td>
+                    <td class="px-4 py-3">{{po.qtyKg}} kg</td><td class="px-4 py-3">{{formatCurrency(po.total)}}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs" :class="{'bg-slate-100 text-slate-700': po.status==='Draft', 'bg-blue-100 text-blue-700': po.status==='Sent', 'bg-green-100 text-green-700': po.status==='Received'}">{{po.status}}</span></td>
+                    <td class="px-4 py-3 space-x-2">
+                      <button v-if="po.status === 'Draft'" @click="sendPO(po)" class="text-blue-600 hover:underline">Send</button>
+                      <button v-if="po.status === 'Sent'" @click="markPOReceived(po)" class="text-emerald-600 hover:underline">Mark Received</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== VENDORS ==================== -->
+        <div v-show="currentTab === 'vendors'" class="space-y-6">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-bold text-slate-800">Vendor Directory</h2>
+            <button @click="modals.vendor = true" class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">+ Add Vendor</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div v-for="vendor in vendors" :key="vendor.id" class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h4 class="font-bold text-slate-800 text-lg">{{vendor.name}}</h4>
+              <p class="text-sm text-slate-500 mb-3">{{vendor.contact}} | {{vendor.phone}}</p>
+              <div class="flex gap-2 mb-4 flex-wrap">
+                <span v-for="mat in vendor.materials" class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded">{{mat}}</span>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mt-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-800">Material Price History</h3>
+              <button @click="modals.priceLog = true" class="px-4 py-2 bg-slate-100 text-slate-700 rounded text-sm hover:bg-slate-200">Log Price</button>
+            </div>
+            <div class="h-64 mb-4"><canvas id="priceHistoryChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ==================== QUALITY CONTROL ==================== -->
+        <div v-show="currentTab === 'quality'" class="h-full flex flex-col space-y-4">
+          <div class="grid grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200"><p class="text-sm text-slate-500">Total Inspections</p><p class="text-2xl font-bold">{{qcReports.length}}</p></div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200"><p class="text-sm text-slate-500">Pass Rate</p><p class="text-2xl font-bold text-emerald-600">{{qcPassRate}}%</p></div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200"><p class="text-sm text-slate-500">Total Defects</p><p class="text-2xl font-bold text-red-600">{{qcReports.reduce((s,r)=>s+r.rejectedQty,0)}}</p></div>
+          </div>
+          <div class="flex justify-between items-center">
+             <h2 class="font-bold">Inspection History</h2>
+             <button @click="modals.qc = true" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ New Inspection</button>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden">
+             <div class="overflow-x-auto">
+               <table class="w-full text-sm text-left">
+                 <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                   <tr>
+                     <th class="px-4 py-3">Report ID</th><th class="px-4 py-3">Order</th><th class="px-4 py-3">Date</th>
+                     <th class="px-4 py-3">Inspector</th><th class="px-4 py-3">Inspected</th><th class="px-4 py-3 text-emerald-600">Passed</th>
+                     <th class="px-4 py-3 text-red-600">Rejected</th><th class="px-4 py-3">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   <tr v-for="report in qcReports" :key="report.id" class="border-b hover:bg-slate-50">
+                     <td class="px-4 py-3 font-medium">{{report.id}}</td><td class="px-4 py-3">{{report.orderId}}</td>
+                     <td class="px-4 py-3">{{report.date}}</td><td class="px-4 py-3">{{report.inspector}}</td>
+                     <td class="px-4 py-3">{{report.inspectedQty}}</td><td class="px-4 py-3 text-emerald-600">{{report.passedQty}}</td>
+                     <td class="px-4 py-3 text-red-600">{{report.rejectedQty}}</td>
+                     <td class="px-4 py-3"><button @click="deleteQCReport(report.id)" class="text-red-500 hover:underline">Delete</button></td>
+                   </tr>
+                 </tbody>
+               </table>
+             </div>
+          </div>
+        </div>
+</main>
+    </div>
+
+    <!-- Modals (Hidden by default, v-if controlled) -->
+    
+    <!-- Lead/RFQ Modal -->
+    <div v-if="modals.lead" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-full">
+        <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg text-slate-800">{{ editingItem.id ? 'Edit Lead' : 'New Lead' }}</h2>
+          <button @click="modals.lead = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <form @submit.prevent="saveLead" class="grid grid-cols-2 gap-4 text-sm">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Company *</label>
+              <input v-model="editingItem.company" required class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Contact Name</label>
+              <input v-model="editingItem.contact" class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Phone</label>
+              <input v-model="editingItem.phone" class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Email</label>
+              <input type="email" v-model="editingItem.email" class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2">
+              <label class="block font-medium text-slate-700 mb-1">Product Details *</label>
+              <input v-model="editingItem.product" required class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Estimated Value (₹)</label>
+              <input type="number" v-model="editingItem.value" class="w-full border rounded px-3 py-2">
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block font-medium text-slate-700 mb-1">Source</label>
+              <select v-model="editingItem.source" class="w-full border rounded px-3 py-2">
+                <option v-for="src in sources">{{src}}</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.lead = false" class="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button @click="saveLead" class="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700">Save Lead</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Print Modal (Uses absolute print layout) -->
+    <div v-if="showInvoice" class="fixed inset-0 z-[60] bg-slate-900 bg-opacity-80 flex justify-center overflow-y-auto py-8">
+      <div class="bg-white w-[210mm] min-h-[297mm] p-10 shadow-2xl relative text-sm print-container print-only-wrapper">
+        <button @click="showInvoice = false" class="absolute top-4 right-4 text-slate-500 hover:text-red-500 text-2xl no-print">×</button>
+        <button @click="window.print()" class="absolute top-4 right-16 bg-emerald-600 text-white px-4 py-1 rounded no-print">Print Invoice</button>
+
+        <div class="flex justify-between border-b-2 border-slate-800 pb-4 mb-6">
+          <div>
+            <h1 class="text-3xl font-black text-slate-900">TAX INVOICE</h1>
+            <h2 class="text-xl font-bold mt-2">AGGARWAL SPRING INDUSTRIES</h2>
+            <p class="text-xs text-slate-600 mt-1">123 Industrial Area, Phase II, New Delhi - 110020</p>
+            <p class="text-xs font-bold mt-1">GSTIN: 04AAAAA0000A1Z5</p>
+          </div>
+          <div class="text-right">
+            <p><strong>Invoice No:</strong> {{ currentInvoice.invNo }}</p>
+            <p><strong>Date:</strong> {{ currentDate }}</p>
+            <p><strong>Order Ref:</strong> {{ currentInvoice.id }}</p>
+          </div>
+        </div>
+
+        <div class="mb-8 border border-slate-200 p-4 rounded">
+          <p class="text-xs text-slate-500 mb-1">Billed To:</p>
+          <p class="font-bold text-lg">{{ currentInvoice.customer }}</p>
+          <p>Customer Address Line 1</p>
+          <p>State, PIN</p>
+        </div>
+
+        <table class="w-full text-left border-collapse border border-slate-300 mb-4">
+          <thead class="bg-slate-100">
+            <tr>
+              <th class="border border-slate-300 px-3 py-2">S.No</th>
+              <th class="border border-slate-300 px-3 py-2">Description of Goods</th>
+              <th class="border border-slate-300 px-3 py-2 text-center">HSN</th>
+              <th class="border border-slate-300 px-3 py-2 text-right">Qty</th>
+              <th class="border border-slate-300 px-3 py-2 text-right">Rate (₹)</th>
+              <th class="border border-slate-300 px-3 py-2 text-right">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border border-slate-300 px-3 py-2 text-center">1</td>
+              <td class="border border-slate-300 px-3 py-2">{{ currentInvoice.product }}</td>
+              <td class="border border-slate-300 px-3 py-2 text-center">7320</td>
+              <td class="border border-slate-300 px-3 py-2 text-right">{{ currentInvoice.qty }}</td>
+              <td class="border border-slate-300 px-3 py-2 text-right">{{ formatCurrencyRaw(currentInvoice.unitPrice || (currentInvoice.total/currentInvoice.qty)) }}</td>
+              <td class="border border-slate-300 px-3 py-2 text-right">{{ formatCurrencyRaw(currentInvoice.total) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="flex justify-end mb-8">
+          <div class="w-64 border border-slate-300">
+            <div class="flex justify-between border-b border-slate-300 px-3 py-1">
+              <span>Subtotal</span>
+              <span>{{ formatCurrencyRaw(currentInvoice.total) }}</span>
+            </div>
+            <div class="flex justify-between border-b border-slate-300 px-3 py-1 text-xs text-slate-600">
+              <span>CGST @ 9%</span>
+              <span>{{ formatCurrencyRaw(currentInvoice.total * 0.09) }}</span>
+            </div>
+            <div class="flex justify-between border-b border-slate-300 px-3 py-1 text-xs text-slate-600">
+              <span>SGST @ 9%</span>
+              <span>{{ formatCurrencyRaw(currentInvoice.total * 0.09) }}</span>
+            </div>
+            <div class="flex justify-between px-3 py-2 font-bold bg-slate-100">
+              <span>Grand Total</span>
+              <span>{{ formatCurrencyRaw(currentInvoice.total * 1.18) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between text-xs mt-16 border-t border-slate-300 pt-4">
+          <div>
+            <p class="font-bold mb-1">Bank Details:</p>
+            <p>Bank: HDFC Bank</p>
+            <p>A/C No: 50200000000000</p>
+            <p>IFSC: HDFC0001234</p>
+          </div>
+          <div class="text-right">
+            <p>For <strong>Aggarwal Spring Industries</strong></p>
+            <div class="h-12"></div>
+            <p>Authorized Signatory</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RFQ Modal -->
+    <div v-if="modals.rfq" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg text-slate-800">{{ editingRfq.id ? 'Edit RFQ' : 'New RFQ' }}</h2>
+          <button @click="modals.rfq = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 overflow-y-auto">
+          <form @submit.prevent="saveRfq" class="grid grid-cols-2 gap-4 text-sm">
+            <div><label class="block font-medium text-slate-700 mb-1">Source *</label>
+              <select v-model="editingRfq.source" class="w-full border rounded px-3 py-2">
+                <option>GeM</option><option>IndiaMART</option><option>Direct</option><option>Email</option>
+              </select></div>
+            <div><label class="block font-medium text-slate-700 mb-1">Source Ref</label>
+              <input v-model="editingRfq.sourceRef" class="w-full border rounded px-3 py-2" placeholder="Bid ID / Enquiry ID"></div>
+            <div class="col-span-2"><label class="block font-medium text-slate-700 mb-1">Customer *</label>
+              <input v-model="editingRfq.customer" required class="w-full border rounded px-3 py-2"></div>
+            <div class="col-span-2"><label class="block font-medium text-slate-700 mb-1">Items Summary</label>
+              <input v-model="editingRfq.summary" class="w-full border rounded px-3 py-2" placeholder="e.g. 10,000x Compression Springs"></div>
+            <div><label class="block font-medium text-slate-700 mb-1">Quoted Amount (₹)</label>
+              <input type="number" v-model="editingRfq.value" class="w-full border rounded px-3 py-2"></div>
+            <div><label class="block font-medium text-slate-700 mb-1">Deadline</label>
+              <input type="date" v-model="editingRfq.deadline" class="w-full border rounded px-3 py-2"></div>
+            <div class="col-span-2"><label class="block font-medium text-slate-700 mb-1">Notes</label>
+              <textarea v-model="editingRfq.notes" rows="2" class="w-full border rounded px-3 py-2"></textarea></div>
+          </form>
+        </div>
+        <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.rfq = false" class="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button @click="saveRfq" class="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700">Save RFQ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div v-if="modals.inventory" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">Add Raw Material</h2>
+          <button @click="modals.inventory = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div><label class="block font-medium mb-1">Material *</label><input v-model="editingInventory.material" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Wire Gauge</label><input v-model="editingInventory.wireGauge" class="w-full border rounded px-3 py-2" placeholder="e.g. 2.0mm"></div>
+          <div><label class="block font-medium mb-1">Lot Number</label><input v-model="editingInventory.lotNumber" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Supplier</label><input v-model="editingInventory.supplier" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Stock (kg) *</label><input type="number" v-model="editingInventory.qtyKg" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Min Stock (kg)</label><input type="number" v-model="editingInventory.minQtyKg" class="w-full border rounded px-3 py-2"></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Location</label><input v-model="editingInventory.location" class="w-full border rounded px-3 py-2" placeholder="e.g. Rack A1"></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.inventory = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="saveInventoryItem" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div v-if="modals.product" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">Add Finished Product</h2>
+          <button @click="modals.product = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div><label class="block font-medium mb-1">Name *</label><input v-model="editingProduct.name" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Category</label>
+            <select v-model="editingProduct.category" class="w-full border rounded px-3 py-2"><option>Spring</option><option>Washer</option></select></div>
+          <div><label class="block font-medium mb-1">Type</label><input v-model="editingProduct.type" class="w-full border rounded px-3 py-2" placeholder="e.g. Compression"></div>
+          <div><label class="block font-medium mb-1">Material</label><input v-model="editingProduct.material" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Stock Qty</label><input type="number" v-model="editingProduct.stockQty" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Unit Cost (₹)</label><input type="number" v-model="editingProduct.unitCost" class="w-full border rounded px-3 py-2"></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Location</label><input v-model="editingProduct.location" class="w-full border rounded px-3 py-2"></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.product = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="saveProduct" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Purchase Order Modal -->
+    <div v-if="modals.po" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">New Purchase Order</h2>
+          <button @click="modals.po = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div class="col-span-2"><label class="block font-medium mb-1">Vendor *</label>
+            <select v-model="editingPO.vendorId" class="w-full border rounded px-3 py-2" @change="editingPO.vendorName = vendors.find(v => v.id === editingPO.vendorId)?.name || ''">
+              <option value="">Select Vendor</option>
+              <option v-for="v in vendors" :key="v.id" :value="v.id">{{ v.name }}</option>
+            </select></div>
+          <div><label class="block font-medium mb-1">Material *</label><input v-model="editingPO.material" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Quantity (kg) *</label><input type="number" v-model="editingPO.qtyKg" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Unit Price (₹/kg)</label><input type="number" v-model="editingPO.unitPriceKg" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Total: ₹{{ formatCurrencyRaw((editingPO.qtyKg || 0) * (editingPO.unitPriceKg || 0)) }}</label></div>
+          <div><label class="block font-medium mb-1">Due Date</label><input type="date" v-model="editingPO.dueDate" class="w-full border rounded px-3 py-2"></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Notes</label><textarea v-model="editingPO.notes" rows="2" class="w-full border rounded px-3 py-2"></textarea></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.po = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="savePO" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Create PO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vendor Modal -->
+    <div v-if="modals.vendor" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">Add Vendor</h2>
+          <button @click="modals.vendor = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div class="col-span-2"><label class="block font-medium mb-1">Name *</label><input v-model="editingVendor.name" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Location</label><input v-model="editingVendor.location" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Lead Time</label><input v-model="editingVendor.leadTime" class="w-full border rounded px-3 py-2" placeholder="e.g. 7-10 days"></div>
+          <div><label class="block font-medium mb-1">Contact</label><input v-model="editingVendor.contact" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Phone</label><input v-model="editingVendor.phone" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Email</label><input v-model="editingVendor.email" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Payment Terms</label><input v-model="editingVendor.paymentTerms" class="w-full border rounded px-3 py-2"></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.vendor = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="saveVendor" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Save Vendor</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price Log Modal -->
+    <div v-if="modals.priceLog" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">Log Material Price</h2>
+          <button @click="modals.priceLog = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div><label class="block font-medium mb-1">Material *</label><input v-model="editingPrice.material" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Wire Gauge</label><input v-model="editingPrice.wireGauge" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Price/kg (₹) *</label><input type="number" v-model="editingPrice.pricePerKg" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Supplier</label><input v-model="editingPrice.supplier" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Date</label><input type="date" v-model="editingPrice.recordedDate" class="w-full border rounded px-3 py-2"></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Notes</label><input v-model="editingPrice.notes" class="w-full border rounded px-3 py-2"></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.priceLog = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="logPrice" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Log Price</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QC Report Modal -->
+    <div v-if="modals.qc" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">New QC Inspection</h2>
+          <button @click="modals.qc = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-4 text-sm">
+          <div class="col-span-2"><label class="block font-medium mb-1">Order *</label>
+            <select v-model="editingQC.orderId" class="w-full border rounded px-3 py-2">
+              <option value="">Select Order</option>
+              <option v-for="o in orders.filter(o => o.status !== 'Completed')" :key="o.id" :value="o.id">{{ o.id }} - {{ o.customer }}</option>
+            </select></div>
+          <div><label class="block font-medium mb-1">Inspector</label><input v-model="editingQC.inspector" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Date</label><input type="date" v-model="editingQC.date" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Inspected Qty *</label><input type="number" v-model="editingQC.inspectedQty" class="w-full border rounded px-3 py-2"></div>
+          <div><label class="block font-medium mb-1">Passed Qty *</label><input type="number" v-model="editingQC.passedQty" class="w-full border rounded px-3 py-2"></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Rejected: {{ (editingQC.inspectedQty || 0) - (editingQC.passedQty || 0) }}</label></div>
+          <div class="col-span-2"><label class="block font-medium mb-1">Notes</label><textarea v-model="editingQC.notes" rows="2" class="w-full border rounded px-3 py-2"></textarea></div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.qc = false" class="px-4 py-2 border rounded text-slate-600">Cancel</button>
+          <button @click="saveQCReport" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Save Report</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div v-if="modals.orderDetail" class="fixed inset-0 z-50 bg-slate-900 bg-opacity-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl">
+          <h2 class="font-bold text-lg">Order {{ selectedOrder.id }}</h2>
+          <button @click="modals.orderDetail = false" class="text-slate-500 hover:text-slate-700">✕</button>
+        </div>
+        <div class="p-6 text-sm space-y-3">
+          <div class="flex justify-between"><span class="text-slate-500">Customer:</span><span class="font-medium">{{ selectedOrder.customer }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Product:</span><span>{{ selectedOrder.product }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Quantity:</span><span>{{ selectedOrder.qty }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Total:</span><span class="font-bold">{{ formatCurrency(selectedOrder.total) }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Status:</span><span class="font-medium">{{ selectedOrder.status }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Due Date:</span><span>{{ selectedOrder.dueDate }}</span></div>
+          <div class="mt-4 flex items-center justify-between">
+            <div v-for="(stage, idx) in orderStages.slice(0,4)" :key="stage" class="flex items-center">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" :class="getOrderProgress(selectedOrder.status) >= ((idx+1)/4)*100 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'">{{ idx+1 }}</div>
+              <div v-if="idx < 3" class="w-8 h-0.5" :class="getOrderProgress(selectedOrder.status) >= ((idx+2)/4)*100 ? 'bg-blue-600' : 'bg-slate-200'"></div>
+            </div>
+          </div>
+          <div class="flex justify-center gap-2 text-xs text-slate-500 mt-1">
+            <span v-for="stage in orderStages.slice(0,4)" :key="stage">{{ stage }}</span>
+          </div>
+        </div>
+        <div class="p-4 border-t bg-slate-50 flex justify-end gap-3 rounded-b-xl">
+          <button @click="modals.orderDetail = false" class="px-4 py-2 border rounded text-slate-600">Close</button>
+          <button v-if="selectedOrder.status !== 'Completed'" @click="progressOrder(selectedOrder); modals.orderDetail = false" class="px-4 py-2 bg-blue-600 text-white rounded font-medium">Progress →</button>
+          <button v-if="selectedOrder.status === 'Completed'" @click="generateInvoice(selectedOrder); modals.orderDetail = false" class="px-4 py-2 bg-emerald-600 text-white rounded font-medium">Generate Invoice</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+    const mockKpis = { pipelineValue: 0, activeOrders: 0, criticalInventory: 0, rfqWinRate: 0, monthlyRevenue: 0, pendingDispatches: 0, qcPassRate: 100, activeLeads: 0 };
+    
+    // ----------------------------------------------------
+
+    const app = createApp({
+      setup() {
+        const loading = ref(false);
+        const toasts = ref([]);
+        const toastId = ref(0);
+        
+        // Navigation
+        const sidebarOpen = ref(false);
+        const currentTab = ref('dashboard');
+        const tabs = [
+          { id: 'dashboard', name: 'Dashboard', icon: '📊' },
+          { id: 'pipeline', name: 'Sales Pipeline', icon: '🏭' },
+          { id: 'quoting', name: 'Quoting Engine', icon: '🧮' },
+          { id: 'rfqs', name: 'RFQ Tracker', icon: '📋' },
+          { id: 'orders', name: 'Orders', icon: '📦' },
+          { id: 'inventory', name: 'Inventory & MRP', icon: '🧾' },
+          { id: 'purchaseOrders', name: 'Purchase Orders', icon: '📄' },
+          { id: 'vendors', name: 'Vendor Portal', icon: '🏢' },
+          { id: 'quality', name: 'Quality Control', icon: '✅' }
+        ];
+        
+        const currentTabName = computed(() => tabs.find(t => t.id === currentTab.value)?.name || '');
+        const currentDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        // State Data
+        const kpis = ref({ pipelineValue: 0, activeOrders: 0, criticalInventory: 0, rfqWinRate: 0, monthlyRevenue: 0, pendingDispatches: 0, qcPassRate: 100, activeLeads: 0 });
+        const activeOrdersList = ref([]);
+        const mrpAlerts = ref([]);
+        
+        // Pipeline State
+        const pipelineSearch = ref('');
+        const pipelineSourceFilter = ref('');
+        const sources = ['GeM', 'IndiaMART', 'Direct', 'Email', 'Trade Show', 'LinkedIn'];
+        const pipelineStages = ['New Lead', 'Specs Received', 'Quoted', 'Sample Sent', 'Approved', 'In Production'];
+        const leads = ref([]);
+
+        // Quoting State
+        const quoteSubTab = ref('spring');
+        const staticData = ref({
+          materials: ['Spring Steel Gr. 2', 'SS 304', 'SS 316', 'Inconel X-750', 'Phosphor Bronze'],
+          densities: { 'Spring Steel Gr. 2': 7.85, 'SS 304': 7.93, 'SS 316': 7.98, 'Inconel X-750': 8.28, 'Phosphor Bronze': 8.8 },
+          prices: { 'Spring Steel Gr. 2': 85, 'SS 304': 320, 'SS 316': 450, 'Inconel X-750': 2500, 'Phosphor Bronze': 950 }
+        });
+        const calcSpring = ref({
+          customerName: '', type: 'Compression', wireDia: 2.0, outerDia: 20.0, freeLength: 50,
+          totalCoils: 8, material: 'Spring Steel Gr. 2', surfaceFinish: 'None', quantity: 1000
+        });
+
+        const showQuotePreview = ref(false);
+        const currentPreviewQuote = ref({});
+
+        // Orders State
+        const orderView = ref('grid');
+        const orderFilter = ref('Active');
+        const orderStages = ['Coiling', 'Heat Treatment', 'QC', 'Dispatch', 'Completed'];
+        const orders = ref([]);
+        const showInvoice = ref(false);
+        const currentInvoice = ref({});
+
+        // Inventory State
+        const inventorySubTab = ref('raw');
+        const inventory = ref([]);
+        const products = ref([]);
+        const pendingPO = ref(null);
+
+        // Purchase Orders State
+        const purchaseOrders = ref([]);
+        const showPOPreview = ref(false);
+        const currentPO = ref({});
+
+        // Vendors State
+        const vendors = ref([]);
+        const priceHistory = ref([]);
+        const priceHistoryMaterialFilter = ref('');
+
+        // Quality Control State
+        const qcReports = ref([]);
+
+        // Modals state
+        const modals = ref({
+          inventory: false, product: false, po: false, vendor: false, priceLog: false, qc: false,
+          lead: false, rfq: false, orderDetail: false
+        });
+        const editingItem = ref({});
+        const editingRfq = ref({ source: 'GeM', sourceRef: '', customer: '', summary: '', value: null, deadline: '', notes: '' });
+        const editingInventory = ref({ material: '', wireGauge: '', lotNumber: '', supplier: '', qtyKg: 0, minQtyKg: 50, location: '' });
+        const editingProduct = ref({ name: '', category: 'Spring', type: '', material: '', stockQty: 0, unitCost: 0, location: '' });
+        const editingPO = ref({ vendorId: '', vendorName: '', material: '', qtyKg: 0, unitPriceKg: 0, dueDate: '', notes: '' });
+        const editingVendor = ref({ name: '', location: '', leadTime: '', contact: '', phone: '', email: '', paymentTerms: '' });
+        const editingPrice = ref({ material: '', wireGauge: '', pricePerKg: 0, supplier: '', recordedDate: new Date().toISOString().split('T')[0], notes: '' });
+        const editingQC = ref({ orderId: '', inspector: '', date: new Date().toISOString().split('T')[0], inspectedQty: 0, passedQty: 0, notes: '' });
+        const selectedOrder = ref({});
+
+        // RFQ State
+        const rfqFilter = ref('All');
+        const rfqs = ref([]);
+
+        // Computed Filters
+        const filteredOrders = computed(() => {
+          let filtered = orders.value;
+          if (orderFilter.value === 'Active') filtered = filtered.filter(o => o.status !== 'Completed');
+          else if (orderFilter.value === 'Completed') filtered = filtered.filter(o => o.status === 'Completed');
+          return filtered;
+        });
+
+        const filteredRfqs = computed(() => {
+          if (rfqFilter.value === 'All') return rfqs.value;
+          return rfqs.value.filter(r => r.status === rfqFilter.value);
+        });
+
+        // Spring Calc Logic
+        const springResults = computed(() => {
+          const c = calcSpring.value;
+          const meanDia = c.outerDia - c.wireDia;
+          const wireLength = (Math.PI * meanDia * c.totalCoils) + (c.freeLength * 0.1);
+          const wireLengthM = wireLength / 1000;
+          const crossSection = Math.PI * Math.pow(c.wireDia/2, 2); // mm2
+          const volume = crossSection * wireLength; // mm3
+          const density = staticData.value.densities[c.material] || 7.85; // g/cm3 -> mg/mm3
+          const weightPerPc = volume * (density / 1000); // grams
+          const totalWeightKg = (weightPerPc * c.quantity) / 1000;
+          
+          const pricePerKg = staticData.value.prices[c.material] || 100;
+          const materialCost = totalWeightKg * pricePerKg;
+          
+          const machineTimeMins = (0.8 + (c.totalCoils * 0.15));
+          const machineCost = machineTimeMins * c.quantity * 1.2; // 1.2 Rs per min
+          
+          const finishCost = c.surfaceFinish !== 'None' ? totalWeightKg * 25 : 0;
+          
+          const overhead = (materialCost + machineCost + finishCost) * 0.15;
+          const subtotal = materialCost + machineCost + finishCost + overhead;
+          const margin = subtotal * 0.20;
+          const total = subtotal + margin;
+          
+          return {
+            meanDia, wireLengthM, weightPerPc, totalWeightKg, materialCost,
+            machineCost, finishCost, overhead, total, unitPrice: total / c.quantity
+          };
+        });
+
+        // Utils
+        const showToast = (message, type = 'info') => {
+          const id = toastId.value++;
+          toasts.value.push({ id, message, type });
+          setTimeout(() => {
+            toasts.value = toasts.value.filter(t => t.id !== id);
+          }, 3000);
+        };
+
+        const formatCurrency = (val) => {
+          if(!val) return '₹0';
+          return '₹' + Number(val).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+        };
+        
+        const formatCurrencyRaw = (val) => {
+          if(!val) return '0.00';
+          return Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        const runServer = (fn, ...args) => {
+          return new Promise((resolve, reject) => {
+            if(typeof google === 'undefined') {
+              console.log(`Mock calling ${fn}`, args);
+              setTimeout(() => resolve({ success: true, mock: true }), 500); // Mock delay
+            } else {
+              google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                [fn](...args);
+            }
+          });
+        };
+
+        // Lead Functions
+        const getLeadsByStage = (stage) => {
+          let l = leads.value.filter(lead => lead.stage === stage);
+          if(pipelineSearch.value) {
+            const s = pipelineSearch.value.toLowerCase();
+            l = l.filter(lead => lead.company.toLowerCase().includes(s) || lead.product.toLowerCase().includes(s));
+          }
+          if(pipelineSourceFilter.value) {
+            l = l.filter(lead => lead.source === pipelineSourceFilter.value);
+          }
+          return l;
+        };
+        const getStageTotalValue = (stage) => getLeadsByStage(stage).reduce((sum, lead) => sum + (Number(lead.value) || 0), 0);
+        const getStageIndex = (stage) => pipelineStages.indexOf(stage);
+        
+        const moveLead = async (lead, dir) => {
+          const currentIndex = getStageIndex(lead.stage);
+          const newIndex = currentIndex + dir;
+          if(newIndex >= 0 && newIndex < pipelineStages.length) {
+            const oldStage = lead.stage;
+            lead.stage = pipelineStages[newIndex];
+            loading.value = true;
+            try {
+              await runServer('saveRecord', 'leads', lead);
+              showToast('Lead stage updated', 'success');
+            } catch(e) {
+              lead.stage = oldStage; // rollback
+              showToast('Failed to update lead', 'error');
+            } finally {
+              loading.value = false;
+            }
+          }
+        };
+
+        const openLeadModal = (lead = null) => {
+          editingItem.value = lead ? {...lead} : { company: '', product: '', value: null, source: 'Direct', stage: 'New Lead' };
+          modals.value.lead = true;
+        };
+
+        const saveLead = async () => {
+          loading.value = true;
+          try {
+            if(!editingItem.value.id) {
+              editingItem.value.id = 'L-' + Math.floor(Math.random() * 10000);
+            }
+            await runServer('saveRecord', 'leads', editingItem.value);
+            showToast('Lead saved successfully', 'success');
+            modals.value.lead = false;
+            await loadAllData();
+          } catch(e) {
+            showToast('Error saving lead', 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const printQuote = () => {
+          window.print();
+        };
+
+        const saveQuote = async () => {
+          loading.value = true;
+          try {
+            const quoteObj = {
+              id: 'QT-' + Date.now().toString().slice(-4),
+              type: calcSpring.value.type,
+              customer: calcSpring.value.customerName,
+              specs: { ...calcSpring.value },
+              calculations: { ...springResults.value },
+              total: springResults.value.total,
+              unitPrice: springResults.value.unitPrice,
+              date: new Date().toISOString().split('T')[0]
+            };
+            await runServer('saveRecord', 'quotes', quoteObj);
+            showToast('Quote saved to Google Sheets successfully!', 'success');
+          } catch(e) {
+            showToast('Failed to save quote: ' + e.message, 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const progressOrder = async (order) => {
+          const idx = orderStages.indexOf(order.status);
+          if(idx < orderStages.length - 1) {
+            loading.value = true;
+            try {
+              await runServer('progressOrder', order.id);
+              showToast(`Order progressed`, 'success');
+              await loadAllData();
+            } finally {
+              loading.value = false;
+            }
+          }
+        };
+
+        const saveRfq = async () => {
+          loading.value = true;
+          try {
+            if (!editingRfq.value.id) {
+              editingRfq.value.id = 'RFQ-' + Math.floor(100 + Math.random() * 900);
+            }
+            await runServer('saveRecord', 'rfqs', editingRfq.value);
+            showToast('RFQ saved successfully', 'success');
+            modals.value.rfq = false;
+            await loadAllData();
+          } catch (e) {
+            showToast('Error saving RFQ', 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const quoteRfq = async (rfq) => {
+          rfq.status = 'quoted';
+          await runServer('saveRecord', 'rfqs', rfq);
+          showToast(`RFQ ${rfq.id} marked as Quoted`, 'success');
+          await loadAllData();
+        };
+
+        const convertToOrder = async (rfq) => {
+          loading.value = true;
+          try {
+            await runServer('convertRfqToOrder', rfq.id);
+            showToast('RFQ converted to active Order!', 'success');
+            await loadAllData();
+          } catch (e) {
+            showToast('Error converting RFQ: ' + e.message, 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const generateInvoice = (order) => {
+          currentInvoice.value = {
+            invoiceNo: 'INV-' + (order.id ? order.id.replace('ORD-', '') : Date.now().toString().slice(-4)),
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            customer: order.customer,
+            product: order.product,
+            qty: order.qty,
+            unitPrice: order.unitPrice || (order.total / (order.qty || 1)),
+            subtotal: order.total || 0,
+            cgst: (order.total || 0) * 0.09,
+            sgst: (order.total || 0) * 0.09,
+            grandTotal: (order.total || 0) * 1.18
+          };
+          showInvoice.value = true;
+        };
+
+        const getOrderProgress = (order) => {
+          if (order && order.progress !== undefined) return order.progress;
+          const map = { 'Coiling': 20, 'Heat Treatment': 40, 'QC': 70, 'Dispatch': 90, 'Completed': 100 };
+          return map[order?.status] || 25;
+        };
+
+        const isOverdue = (dateStr) => {
+          if (!dateStr) return false;
+          return new Date(dateStr) < new Date();
+        };
+
+        const openRfqModal = (rfq = null) => {
+          editingRfq.value = rfq ? { ...rfq } : { source: 'GeM', sourceRef: '', customer: '', summary: '', value: null, deadline: '', notes: '' };
+          modals.value.rfq = true;
+        };
+
+        const getSourceBadgeClass = (src) => {
+          switch(src) {
+            case 'GeM': return 'bg-purple-100 text-purple-700 border-purple-200';
+            case 'IndiaMART': return 'bg-orange-100 text-orange-700 border-orange-200';
+            case 'Direct': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'Email': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+          }
+        };
+
+        const getStatusBadgeClass = (st) => {
+          switch(st) {
+            case 'Completed':
+            case 'won':
+            case 'In Stock': return 'bg-emerald-100 text-emerald-700';
+            case 'Coiling':
+            case 'received': return 'bg-blue-100 text-blue-700';
+            case 'Heat Treatment':
+            case 'quoted': return 'bg-amber-100 text-amber-700';
+            case 'Low Stock':
+            case 'QC': return 'bg-purple-100 text-purple-700';
+            case 'Critical':
+            case 'lost': return 'bg-red-100 text-red-700';
+            default: return 'bg-slate-100 text-slate-700';
+          }
+        };
+
+        const getDeadlineClass = (deadline) => {
+          if (!deadline) return 'text-slate-500';
+          const d = new Date(deadline);
+          const now = new Date();
+          const diffDays = (d - now) / (1000 * 60 * 60 * 24);
+          if (diffDays < 0) return 'text-red-600 font-bold';
+          if (diffDays <= 3) return 'text-amber-600 font-semibold';
+          return 'text-emerald-600';
+        };
+
+        // Order details viewer
+        const viewOrder = (order) => {
+          selectedOrder.value = order;
+          modals.value.orderDetail = true;
+        };
+
+        // Inventory helpers
+        const getInventoryStatusClass = (status) => {
+          return { 'In Stock': 'bg-emerald-100 text-emerald-700', 'Low Stock': 'bg-amber-100 text-amber-700', 'Critical': 'bg-red-100 text-red-700' }[status] || 'bg-slate-100 text-slate-700';
+        };
+        const mrpShortfalls = computed(() => inventory.value.filter(i => (Number(i.qtyKg) || 0) < (Number(i.minQtyKg) || 0)));
+        const generatePOFromAlert = (item) => {
+          openPOModal({ material: item.material, vendorName: item.supplier, qtyKg: Math.max((item.minQtyKg || 100) - (item.qtyKg || 0), 50) });
+          currentTab.value = 'purchaseOrders';
+        };
+
+        const saveInventoryItem = async () => {
+          if (!editingInventory.value.material) { showToast('Material name required', 'error'); return; }
+          const item = {
+            id: editingInventory.value.id || ('INV-' + Math.floor(100 + Math.random() * 900)),
+            ...editingInventory.value,
+            status: (Number(editingInventory.value.qtyKg) || 0) < (Number(editingInventory.value.minQtyKg) || 50) ? 'Low Stock' : 'In Stock'
+          };
+          await runServer('saveRecord', 'inventory', item);
+          showToast('Raw Material saved', 'success');
+          modals.value.inventory = false;
+          await loadAllData();
+        };
+
+        const saveProduct = async () => {
+          if (!editingProduct.value.name) { showToast('Product name required', 'error'); return; }
+          const prod = {
+            id: editingProduct.value.id || ('SP-' + Math.floor(1000 + Math.random() * 9000)),
+            uom: 'pcs',
+            ...editingProduct.value
+          };
+          await runServer('saveRecord', 'products', prod);
+          showToast('Finished Product saved', 'success');
+          modals.value.product = false;
+          await loadAllData();
+        };
+
+        // PO functions
+        const openPOModal = (prefill = null) => {
+          editingPO.value = prefill ? { ...prefill } : { vendorId: '', vendorName: '', material: '', qtyKg: 100, unitPriceKg: 85, dueDate: '', notes: '' };
+          modals.value.po = true;
+        };
+        const openNewPO = (item) => openPOModal({ material: item.material || '', vendorName: item.supplier || '', qtyKg: 100 });
+
+        const savePO = async () => {
+          if (!editingPO.value.material) { showToast('Material required', 'error'); return; }
+          const po = {
+            id: editingPO.value.id || ('PO-' + Math.floor(100 + Math.random() * 900)),
+            total: (Number(editingPO.value.qtyKg) || 0) * (Number(editingPO.value.unitPriceKg) || 0),
+            status: 'Draft',
+            orderDate: new Date().toISOString().split('T')[0],
+            ...editingPO.value
+          };
+          await runServer('saveRecord', 'purchaseOrders', po);
+          showToast('Purchase Order created', 'success');
+          modals.value.po = false;
+          await loadAllData();
+        };
+
+        const sendPO = async (po) => {
+          po.status = 'Sent';
+          await runServer('saveRecord', 'purchaseOrders', po);
+          showToast(`PO ${po.id} sent to vendor`, 'success');
+          await loadAllData();
+        };
+
+        const markPOReceived = async (po) => {
+          loading.value = true;
+          try {
+            await runServer('receivePO', po.id);
+            showToast(`PO ${po.id} marked as Received & stock updated`, 'success');
+            await loadAllData();
+          } catch (e) {
+            showToast('Error processing PO receipt', 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        // Vendor functions
+        const saveVendor = async () => {
+          if (!editingVendor.value.name) { showToast('Vendor name required', 'error'); return; }
+          const v = {
+            id: editingVendor.value.id || ('V-' + Math.floor(100 + Math.random() * 900)),
+            rating: 4,
+            materials: ['Spring Steel'],
+            ...editingVendor.value
+          };
+          await runServer('saveRecord', 'vendors', v);
+          showToast('Vendor added successfully', 'success');
+          modals.value.vendor = false;
+          await loadAllData();
+        };
+
+        const logPrice = async () => {
+          if (!editingPrice.value.material) { showToast('Material required', 'error'); return; }
+          const p = {
+            id: editingPrice.value.id || ('PH-' + Math.floor(100 + Math.random() * 900)),
+            ...editingPrice.value
+          };
+          await runServer('saveRecord', 'priceHistory', p);
+          showToast('Material price logged', 'success');
+          modals.value.priceLog = false;
+          await loadAllData();
+        };
+
+        // QC functions
+        const saveQCReport = async () => {
+          if (!editingQC.value.orderId) { showToast('Order selection required', 'error'); return; }
+          const r = {
+            id: editingQC.value.id || ('QC-' + Math.floor(100 + Math.random() * 900)),
+            rejectedQty: Math.max((Number(editingQC.value.inspectedQty) || 0) - (Number(editingQC.value.passedQty) || 0), 0),
+            defectTypes: [{ type: 'Dimensional Tolerance', count: 2 }],
+            ...editingQC.value
+          };
+          await runServer('saveRecord', 'qcReports', r);
+          showToast('QC Inspection report saved', 'success');
+          modals.value.qc = false;
+          await loadAllData();
+        };
+
+        const deleteQCReport = async (id) => {
+          await runServer('deleteRecord', 'qcReports', id);
+          showToast('QC report deleted', 'success');
+          await loadAllData();
+        };
+
+        const clearAllDatabaseRows = async () => {
+          if (confirm('Are you sure you want to clear all entries across all 12 database sheets? Headers will be preserved.')) {
+            loading.value = true;
+            try {
+              const res = await runServer('cleanAllWorksheets');
+              showToast(res.message || 'All sheet entries cleared!', 'success');
+              leads.value = []; orders.value = []; rfqs.value = []; inventory.value = [];
+              products.value = []; purchaseOrders.value = []; vendors.value = []; priceHistory.value = []; qcReports.value = [];
+              await loadAllData();
+            } catch (e) {
+              showToast('Error clearing sheets', 'error');
+            } finally {
+              loading.value = false;
+            }
+          }
+        };
+
+        const qcPassRate = computed(() => {
+          if (!qcReports.value.length) return 100;
+          const total = qcReports.value.reduce((s, r) => s + (Number(r.inspectedQty) || 0), 0);
+          const passed = qcReports.value.reduce((s, r) => s + (Number(r.passedQty) || 0), 0);
+          return total > 0 ? ((passed / total) * 100).toFixed(1) : 100;
+        });
+
+        let priceChartInstance = null;
+        const initPriceChart = () => {
+          const ctx = document.getElementById('priceHistoryChart');
+          if (!ctx) return;
+          
+          let filtered = priceHistory.value;
+          if (priceHistoryMaterialFilter.value) {
+            filtered = filtered.filter(p => p.material === priceHistoryMaterialFilter.value);
+          }
+          
+          const labels = filtered.map(p => p.recordedDate || 'N/A');
+          const data = filtered.map(p => Number(p.pricePerKg) || 0);
+
+          if (priceChartInstance) {
+            priceChartInstance.data.labels = labels.length ? labels : ['No Data'];
+            priceChartInstance.data.datasets[0].data = data.length ? data : [0];
+            priceChartInstance.update();
+          } else {
+            priceChartInstance = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: labels.length ? labels : ['No Data'],
+                datasets: [{ label: 'Price (₹/kg)', data: data.length ? data : [0], borderColor: '#3b82f6', tension: 0.1 }]
+              },
+              options: { maintainAspectRatio: false }
+            });
+          }
+        };
+
+        const initializeCharts = () => {
+          if (currentTab.value === 'vendors') { nextTick(() => initPriceChart()); }
+          if (currentTab.value !== 'dashboard') return;
+
+          nextTick(() => {
+            const ctxRev = document.getElementById('revenueChart');
+            const ctxSrc = document.getElementById('sourceChart');
+            
+            const gemCount = orders.value.filter(o => o.source === 'GeM').length;
+            const indiamartCount = orders.value.filter(o => o.source === 'IndiaMART').length;
+            const directCount = orders.value.filter(o => o.source === 'Direct').length;
+            const emailCount = orders.value.filter(o => o.source === 'Email').length;
+            const srcData = [gemCount, indiamartCount, directCount, emailCount];
+
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentMonthIdx = new Date().getMonth();
+            const last6Months = [];
+            const last6Revenues = [0, 0, 0, 0, 0, 0];
+            
+            for (let i = 5; i >= 0; i--) {
+              const mIdx = (currentMonthIdx - i + 12) % 12;
+              last6Months.push(monthNames[mIdx]);
+            }
+            
+            orders.value.filter(o => o.status === 'Completed').forEach(o => {
+              if (o.orderDate) {
+                const dateParts = o.orderDate.split('-');
+                if (dateParts.length === 3) {
+                  const m = parseInt(dateParts[1], 10) - 1;
+                  const idxIn6 = last6Months.indexOf(monthNames[m]);
+                  if (idxIn6 > -1) {
+                    last6Revenues[idxIn6] += Number(o.total) || 0;
+                  }
+                }
+              }
+            });
+
+            if (ctxRev) {
+              if (revChartInstance) {
+                revChartInstance.data.labels = last6Months;
+                revChartInstance.data.datasets[0].data = last6Revenues;
+                revChartInstance.update();
+              } else {
+                revChartInstance = new Chart(ctxRev, {
+                  type: 'bar',
+                  data: {
+                    labels: last6Months,
+                    datasets: [{
+                      label: 'Revenue (₹)',
+                      data: last6Revenues,
+                      backgroundColor: '#3b82f6',
+                      borderRadius: 4
+                    }]
+                  },
+                  options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+              }
+            }
+            
+            if (ctxSrc) {
+              if (srcChartInstance) {
+                srcChartInstance.data.datasets[0].data = srcData;
+                srcChartInstance.update();
+              } else {
+                srcChartInstance = new Chart(ctxSrc, {
+                  type: 'doughnut',
+                  data: {
+                    labels: ['GeM', 'IndiaMART', 'Direct', 'Email'],
+                    datasets: [{
+                      data: srcData,
+                      backgroundColor: ['#a855f7', '#f97316', '#3b82f6', '#22c55e']
+                    }]
+                  },
+                  options: { maintainAspectRatio: false }
+                });
+              }
+            }
+          });
+        };
+
+        const loadAllData = async (showSpinner = false) => {
+          if (showSpinner) loading.value = true;
+          try {
+            const res = await runServer('fetchAllData');
+            if (res && res.success && res.data) {
+              leads.value = res.data.leads || [];
+              orders.value = res.data.orders || [];
+              rfqs.value = res.data.rfqs || [];
+              inventory.value = res.data.inventory || [];
+              products.value = res.data.products || [];
+              purchaseOrders.value = res.data.purchaseOrders || [];
+              vendors.value = res.data.vendors || [];
+              priceHistory.value = res.data.priceHistory || [];
+              qcReports.value = res.data.qcReports || [];
+              
+              activeOrdersList.value = orders.value.filter(o => o.status !== 'Completed').slice(0, 5);
+              
+              const pipeVal = leads.value.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
+              const activeOrdCount = orders.value.filter(o => o.status !== 'Completed').length;
+              const critInvCount = inventory.value.filter(i => (Number(i.qtyKg) || 0) < (Number(i.minQtyKg) || 0)).length;
+              const wonCount = rfqs.value.filter(r => r.status === 'won').length;
+              const rfqWin = rfqs.value.length ? Math.round((wonCount / rfqs.value.length) * 100) : 0;
+              const monthRev = orders.value.filter(o => o.status === 'Completed').reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+              
+              kpis.value = {
+                pipelineValue: pipeVal,
+                activeOrders: activeOrdCount,
+                criticalInventory: critInvCount,
+                rfqWinRate: rfqWin,
+                monthlyRevenue: monthRev,
+                pendingDispatches: orders.value.filter(o => o.status === 'Dispatch' || o.status === 'In Production').length,
+                qcPassRate: Number(qcPassRate.value) || 100,
+                activeLeads: leads.value.length
+              };
+            }
+          } catch (e) {
+            console.error('Background sheet sync notice:', e);
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const onTabChange = (tabId) => {
+          if (tabId === 'dashboard' || tabId === 'vendors') {
+            nextTick(() => initializeCharts());
+          }
+        };
+
+        const handleClearAllData = async () => {
+          if (!confirm('Are you sure you want to clear all data from Google Sheets? All rows across all 12 tables will be wiped clean.')) return;
+          loading.value = true;
+          try {
+            await runServer('cleanAllWorksheets');
+            leads.value = [];
+            orders.value = [];
+            rfqs.value = [];
+            inventory.value = [];
+            products.value = [];
+            purchaseOrders.value = [];
+            vendors.value = [];
+            priceHistory.value = [];
+            qcReports.value = [];
+            activeOrdersList.value = [];
+            kpis.value = {
+              pipelineValue: 0, activeOrders: 0, criticalInventory: 0, rfqWinRate: 0,
+              monthlyRevenue: 0, pendingDispatches: 0, qcPassRate: 100, activeLeads: 0
+            };
+            showToast('All Google Sheet records cleared successfully!', 'info');
+          } catch (e) {
+            showToast('Failed to clear sheets: ' + e.message, 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const handleSeedSampleData = async () => {
+          if (!confirm('Load standard sample manufacturing demo data into Google Sheets?')) return;
+          loading.value = true;
+          try {
+            await runServer('seedSampleData');
+            await loadAllData(false);
+            showToast('Sample manufacturing data loaded successfully into Google Sheets!', 'success');
+          } catch (e) {
+            showToast('Failed to seed demo data: ' + e.message, 'error');
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        onMounted(() => {
+          activeOrdersList.value = orders.value.filter(o => o.status !== 'Completed').slice(0, 5);
+          initializeCharts();
+          loadAllData();
+        });
+
+        return {
+          loading, toasts, currentTab, currentTabName, tabs, sidebarOpen, currentDate,
+          kpis, activeOrdersList, mrpAlerts, loadAllData, handleClearAllData, handleSeedSampleData, onTabChange,
+          
+          pipelineSearch, pipelineSourceFilter, sources, pipelineStages, leads,
+          getLeadsByStage, getStageTotalValue, getStageIndex, moveLead, openLeadModal, saveLead,
+          
+          quoteSubTab, staticData, calcSpring, springResults, printQuote, saveQuote, showQuotePreview, currentPreviewQuote,
+          
+          orderView, orderFilter, orderStages, orders, filteredOrders,
+          progressOrder, generateInvoice, showInvoice, currentInvoice, getOrderProgress, isOverdue,
+          
+          rfqFilter, rfqs, filteredRfqs, openRfqModal, saveRfq, quoteRfq, convertToOrder, editingRfq,
+          
+          modals, editingItem, inventorySubTab, inventory, products, pendingPO, purchaseOrders, showPOPreview, currentPO, vendors, priceHistory, priceHistoryMaterialFilter, qcReports, getInventoryStatusClass, mrpShortfalls, generatePOFromAlert, saveInventoryItem, saveProduct, openPOModal, openNewPO, savePO, sendPO, markPOReceived, saveVendor, logPrice, saveQCReport, deleteQCReport, qcPassRate, clearAllDatabaseRows,
+          
+          editingInventory, editingProduct, editingPO, editingVendor, editingPrice, editingQC, selectedOrder, viewOrder,
+          
+          formatCurrency, formatCurrencyRaw, getSourceBadgeClass, getStatusBadgeClass, getDeadlineClass, initializeCharts
+        };
+
+      }
+    });
+
+    app.mount('#app');
+  </script>
+</body>
+</html>

@@ -16,29 +16,74 @@ export { DataContext };
 export const DataProvider = ({ children }) => {
     const { showToast } = useToast();
     
-    // Helper to init state from localStorage or fallback to mockData
-    const initData = (key, initialData) => {
+    // Helper to init state from localStorage
+    const initData = (key) => {
         try {
             const saved = localStorage.getItem(key);
-            if (saved) return JSON.parse(saved);
+            if (saved !== null && saved !== undefined) {
+                return JSON.parse(saved);
+            }
         } catch (e) {
             console.error('Failed to parse local storage data', e);
         }
-        return initialData;
+        return [];
     };
 
-    const [inventoryItems, setInventoryItems] = useState(() => initData('imrs_inventory', initialInventory));
-    const [suppliersList, setSuppliersList] = useState(() => initData('imrs_suppliers', initialSuppliers));
-    const [vendors, setVendors] = useState(() => initData('imrs_vendors', initialVendors));
-    const [allLeads, setAllLeads] = useState(() => initData('imrs_leads', initialLeads));
-    const [products, setProducts] = useState(() => initData('imrs_products', []));
-    const [orders, setOrders] = useState(() => initData('imrs_orders', initialOrders));
-    const [purchaseOrders, setPurchaseOrders] = useState(() => initData('imrs_pos', []));
-    const [rfqs, setRFQs] = useState(() => initData('imrs_rfqs', []));
-    const [priceHistory, setPriceHistory] = useState(() => initData('imrs_price_history', []));
-    const [qcReports, setQcReports] = useState(() => initData('imrs_qc_reports', []));
+    const [inventoryItems, setInventoryItems] = useState(() => initData('imrs_inventory'));
+    const [suppliersList, setSuppliersList] = useState(() => initData('imrs_suppliers'));
+    const [vendors, setVendors] = useState(() => initData('imrs_vendors'));
+    const [allLeads, setAllLeads] = useState(() => initData('imrs_leads'));
+    const [products, setProducts] = useState(() => initData('imrs_products'));
+    const [orders, setOrders] = useState(() => initData('imrs_orders'));
+    const [purchaseOrders, setPurchaseOrders] = useState(() => initData('imrs_pos'));
+    const [rfqs, setRFQs] = useState(() => initData('imrs_rfqs'));
+    const [priceHistory, setPriceHistory] = useState(() => initData('imrs_price_history'));
+    const [qcReports, setQcReports] = useState(() => initData('imrs_qc_reports'));
     const [pendingPO, setPendingPO] = useState(null); // For pre-filling PO form from MRP alerts
     const isSupabaseConnected = !!supabase;
+
+    // Reset all data to empty
+    const clearAllData = () => {
+        setInventoryItems([]);
+        setSuppliersList([]);
+        setVendors([]);
+        setAllLeads([]);
+        setProducts([]);
+        setOrders([]);
+        setPurchaseOrders([]);
+        setRFQs([]);
+        setPriceHistory([]);
+        setQcReports([]);
+        ['imrs_inventory', 'imrs_suppliers', 'imrs_vendors', 'imrs_leads', 'imrs_products', 'imrs_orders', 'imrs_pos', 'imrs_rfqs', 'imrs_price_history', 'imrs_qc_reports'].forEach(k => {
+            localStorage.setItem(k, JSON.stringify([]));
+        });
+        showToast('All database records cleared! Fresh slate ready.', 'info');
+    };
+
+    // Reset back to initial demo data
+    const resetToSampleData = () => {
+        setInventoryItems(initialInventory);
+        setSuppliersList(initialSuppliers);
+        setVendors(initialVendors);
+        setAllLeads(initialLeads);
+        setProducts([]);
+        setOrders(initialOrders);
+        setPurchaseOrders([]);
+        setRFQs([]);
+        setPriceHistory([]);
+        setQcReports([]);
+        localStorage.setItem('imrs_inventory', JSON.stringify(initialInventory));
+        localStorage.setItem('imrs_suppliers', JSON.stringify(initialSuppliers));
+        localStorage.setItem('imrs_vendors', JSON.stringify(initialVendors));
+        localStorage.setItem('imrs_leads', JSON.stringify(initialLeads));
+        localStorage.setItem('imrs_products', JSON.stringify([]));
+        localStorage.setItem('imrs_orders', JSON.stringify(initialOrders));
+        localStorage.setItem('imrs_pos', JSON.stringify([]));
+        localStorage.setItem('imrs_rfqs', JSON.stringify([]));
+        localStorage.setItem('imrs_price_history', JSON.stringify([]));
+        localStorage.setItem('imrs_qc_reports', JSON.stringify([]));
+        showToast('Sample manufacturing data loaded successfully!', 'success');
+    };
 
     // Initial load from Supabase
     useEffect(() => {
@@ -533,6 +578,7 @@ export const DataProvider = ({ children }) => {
             priceHistory, setPriceHistory, addPriceEntry, deletePriceEntry,
             qcReports, setQcReports, addQcReport, deleteQcReport,
             pendingPO, setPendingPO,
+            clearAllData, resetToSampleData,
             isSupabaseConnected,
             connectSupabase: SupabaseService.setCredentials
         }}>

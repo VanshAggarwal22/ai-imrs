@@ -217,23 +217,31 @@ export const SupabaseService = {
     // ---- ORDERS SYNC ----
     async insertOrder(order) {
         if (!supabase) return;
+        const defaultDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const defaultStages = [
+            { name: 'Coiling', status: order.status === 'Coiling' ? 'in_progress' : (['Heat Treatment', 'QC', 'Dispatch', 'Completed'].includes(order.status) ? 'completed' : 'pending') },
+            { name: 'Heat Treatment', status: order.status === 'Heat Treatment' ? 'in_progress' : (['QC', 'Dispatch', 'Completed'].includes(order.status) ? 'completed' : 'pending') },
+            { name: 'QC', status: order.status === 'QC' ? 'in_progress' : (['Dispatch', 'Completed'].includes(order.status) ? 'completed' : 'pending') },
+            { name: 'Dispatch', status: order.status === 'Dispatch' ? 'in_progress' : (order.status === 'Completed' ? 'completed' : 'pending') },
+            { name: 'Completed', status: order.status === 'Completed' ? 'completed' : 'pending' }
+        ];
         const mapped = {
             id: order.id,
-            customer: order.customer,
-            product: order.product,
-            qty: order.qty,
-            unit_price: order.unitPrice,
-            total: order.total,
-            status: order.status,
-            progress: order.progress,
-            order_date: order.orderDate,
-            due_date: order.dueDate,
-            material: order.material,
-            wire_gauge: order.wireGauge,
-            stages: order.stages,
-            source: order.source,
-            source_ref: order.sourceRef,
-            rfq_id: order.rfqId
+            customer: order.customer || 'Unknown Customer',
+            product: order.product || 'Standard Springs',
+            qty: order.qty || 1000,
+            unit_price: order.unitPrice || 0,
+            total: order.total || 0,
+            status: order.status || 'Coiling',
+            progress: order.progress !== undefined ? order.progress : 20,
+            order_date: order.orderDate || new Date().toISOString().split('T')[0],
+            due_date: order.dueDate || defaultDueDate,
+            material: order.material || 'Spring Steel Gr. 2',
+            wire_gauge: order.wireGauge || '2.0mm',
+            stages: order.stages || defaultStages,
+            source: order.source || 'Direct',
+            source_ref: order.sourceRef || null,
+            rfq_id: order.rfqId || null
         };
         const { error } = await supabase.from('orders').insert(mapped);
         if (error) console.error("Error inserting order:", error);

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Mail, CheckCircle2, AlertCircle, Save, Settings as SettingsIcon, Wifi, WifiOff, TestTube2, Globe, KeyRound } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useData } from '../../context/DataContext';
 import { EmailService } from '../../services/EmailService';
 import { supabase } from '../../services/SupabaseService';
 
 export default function Settings() {
     const { showToast } = useToast();
+    const { clearAllData, resetToSampleData } = useData();
     const [emailConfig, setEmailConfig] = useState({
         smtpHost: '',
         smtpPort: '587',
@@ -167,6 +169,45 @@ export default function Settings() {
                                 <CheckCircle2 size={14} /> Mail integration is currently active — using <strong>{EmailService.getConfig().smtpUser}</strong>
                             </div>
                         )}
+                    </div>
+
+                    <div className="card" style={{ marginTop: '24px' }}>
+                        <div className="card-header">
+                            <div>
+                                <h3 className="card-title">Database & Mock Data Management</h3>
+                                <p className="card-subtitle">Control your local storage data state</p>
+                            </div>
+                            <KeyRound size={20} color="var(--accent-blue)" />
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <p style={{ margin: 0 }}>
+                                Clear all demo/dummy entries across CRM Pipeline, Orders, Inventory, RFQs, and Vendors, or reload realistic sample data anytime.
+                            </p>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <button 
+                                    className="btn btn-secondary" 
+                                    style={{ borderColor: 'var(--accent-red)', color: '#ef4444' }}
+                                    onClick={() => {
+                                        if (window.confirm('Are you sure you want to clear all data? All entries will be removed.')) {
+                                            clearAllData();
+                                        }
+                                    }}
+                                >
+                                    🗑️ Clear All Entries
+                                </button>
+                                <button 
+                                    className="btn btn-secondary" 
+                                    style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue-light)' }}
+                                    onClick={() => {
+                                        if (window.confirm('Reset all records to standard sample manufacturing data?')) {
+                                            resetToSampleData();
+                                        }
+                                    }}
+                                >
+                                    🔄 Load Sample Data
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
